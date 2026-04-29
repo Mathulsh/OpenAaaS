@@ -1,0 +1,226 @@
+//! API 发现端点
+//!
+//! 提供给客户端自动发现 API 文档的端点，无需认证
+
+use axum::{extract::State, Json};
+use serde_json::{json, Value};
+
+use crate::state::AppState;
+
+/// GET /api/v1/discovery - 返回 API 文档
+pub async fn discovery(State(_state): State<AppState>) -> Json<Value> {
+    Json(json!({
+        "api": {
+            "name": "OpenAaaS",
+            "version": env!("CARGO_PKG_VERSION"),
+            "base_url": "/api/v1"
+        },
+        "design_principles": {
+            "progressive_disclosure": "信息渐进式披露：API 设计遵循'先摘要筛选，再按需详情'的原则。list_services 返回轻量列表（name + description + status），不占用上下文；get_service_usage 按需获取单个服务的详细用法说明。调用方应先浏览列表筛选候选，再对目标服务获取 usage，避免一次性加载大量长文本。"
+        },
+        "auth": {
+            "type": "bearer",
+            "header": "Authorization: Bearer {api_key}"
+        },
+        "workflows": {
+            "client_register": {
+                "steps": [
+                    "1. POST /api/v1/client/auth/register - 注册获取 API Key",
+                    "2. 保存返回的 api_key，用于后续请求认证",
+                    "3. 建议在调用方项目目录写入 .env，例如 OPEN_AAAS_API_KEY={api_key}",
+                    "4. GET /client/services - 获取轻量服务列表浏览可用服务",
+                    "5. GET /client/services/{id}/usage - 按需获取目标服务的详细 usage",
+                    "6. 如需使用受限服务，联系管理员授权"
+                ],
+                "env_example": "OPEN_AAAS_API_KEY={api_key}",
+                "note": "这里的 .env 是调用 OpenAaaS API 的 client 项目配置，和 server、agent-core 的部署配置无关。"
+            },
+            "submit_task": {
+                "steps": [
+                    "1. GET /client/services - 获取轻量服务列表（name/description/status），浏览筛选候选",
+                    "2. GET /client/services/{id}/usage - 对筛选出的候选服务，按需获取详细 usage（能力范围、调用规范）",
+                    "3. 根据 usage 说明，构造正确的 task_prompt 和 output_prompt",
+                    "4. POST /client/tasks - 创建任务（multipart/form-data，可带文件）",
+                    "5. 保存返回的 task_id，任务在后台异步执行",
+                    "6. 使用 Dashboard 查看进度，或稍后主动查询任务状态",
+                    "7. GET /client/files/list/{task_id} - 获取结果文件列表",
+                    "8. GET /client/files/{id}/download - 下载结果"
+                ],
+                "note": "任务执行时间从几分钟到几小时不等，提交后立即返回。**请勿轮询**。推荐使用 Dashboard 实时监控，或任务完成后再查询结果。"
+            },
+        },
+        "endpoints": [
+            {
+                "name": "create_task",
+                "method": "POST",
+                "path": "/client/tasks",
+                "content_type": "multipart/form-data",
+                "body": {
+                    "service_id": "string (必需) - 服务ID",
+                    "task_prompt": "string (必需) - 任务描述",
+                    "output_prompt": "string (必需) - 输出格式要求",
+                    "files": "binary (可选，可多个) - 输入文件"
+                },
+                "response": {
+                    "id": "string",
+                    "status": "pending",
+                    "input": {
+                        "task_prompt": "string",
+                        "output_prompt": "string",
+                        "input_files": ["string"]
+                    },
+                    "created_at": "ISO8601"
+                }
+            },
+            {
+                "name": "list_tasks",
+                "method": "GET",
+                "path": "/client/tasks?status=&service_id=&limit=20&offset=0"
+            },
+            {
+                "name": "get_task",
+                "method": "GET",
+                "path": "/client/tasks/{id}"
+            },
+            {
+                "name": "cancel_task",
+                "method": "POST",
+                "path": "/client/tasks/{id}/cancel",
+                "limitation": "只能取消pending或running状态"
+            },
+            {
+                "name": "register",
+                "method": "POST",
+                "path": "/client/auth/register",
+                "body": {
+                    "name": "string (必需) - Client 名称，1-64字符，trim后不能为空"
+                },
+                "response": {
+                    "api_key": "string - 保存好，后续请求需要使用",
+                    "id": "string - Client ID"
+                },
+                "note": "无需认证，首次调用生成 API Key"
+            },
+            {
+                "name": "list_services",
+                "method": "GET",
+                "path": "/client/services",
+                "response": {
+                    "services": [
+                        {
+                            "id": "string",
+                            "name": "string",
+                            "description": "string|null",
+                            "agent_status": "online|offline|busy",
+                            "access_type": "public|restricted",
+                            "has_permission": "true|false"
+                        }
+                    ]
+                },
+                "note": "返回轻量列表（不含 usage 长文本），用于快速浏览和筛选服务。如需了解服务详细能力，请使用 get_service_usage 按需获取。public 服务自动可用；restricted 服务需要 has_permission=true 才能使用。"
+            },
+            {
+                "name": "get_service_usage",
+                "method": "GET",
+                "path": "/client/services/{id}/usage",
+                "response": {
+                    "id": "string",
+                    "name": "string",
+                    "usage": "string - 服务使用说明/用法"
+                },
+                "note": "渐进式披露的关键步骤：在 list_services 筛选出候选服务后，调用此接口获取目标服务的详细 usage（能力范围、调用规范、返回格式、限制条件）。usage 内容通常较长，只应在确定使用该服务时获取，避免占用上下文。"
+            },
+            {
+                "name": "grant_permission",
+                "method": "POST",
+                "path": "/client/services/{id}/grant",
+                "auth": "需要管理员权限",
+                "body": {
+                    "user_id": "string (必需) - 要授权的 Client ID"
+                },
+                "response": {
+                    "success": "true|false"
+                }
+            },
+            {
+                "name": "download_file",
+                "method": "GET",
+                "path": "/client/files/{id}/download"
+            },
+            {
+                "name": "list_files",
+                "method": "GET",
+                "path": "/client/files/list/{task_id}"
+            },
+            {
+                "name": "update_profile",
+                "method": "PUT",
+                "path": "/client/profile",
+                "body": {
+                    "name": "string (必需) - 新用户名"
+                },
+                "response": {
+                    "id": "string",
+                    "name": "string",
+                    "api_key": "string (空 - 请从注册响应中保存)",
+                    "role": "string",
+                    "created_at": "ISO8601"
+                }
+            },
+            {
+                "name": "create_service",
+                "method": "POST",
+                "path": "/api/v1/admin/services",
+                "auth": "需要管理员权限",
+                "body": {
+                    "name": "string (必需) - 服务名称",
+                    "description": "string (必需) - 服务描述",
+                    "usage": "string (必需) - 服务使用说明/用法",
+                    "is_public": "boolean (可选) - 是否公开服务，默认true"
+                },
+                "response": {
+                    "id": "string",
+                    "name": "string",
+                    "description": "string",
+                    "usage": "string - 服务使用说明/用法",
+                    "agent_status": "online|offline|busy",
+                    "access_type": "public|restricted"
+                },
+                "example": {
+                    "request": {
+                        "name": "example-agent",
+                        "description": "示例智能体",
+                        "usage": "通用AI助手，可以：\n1. 代码编写与调试\n2. 文档处理\n3. 数据分析",
+                        "is_public": true
+                    }
+                }
+            }
+        ],
+        "types": {
+            "ServiceListItem": {
+                "id": "string",
+                "name": "string",
+                "description": "string",
+                "agent_status": "online|offline|busy",
+                "access_type": "public|restricted",
+                "has_permission": "true|false"
+            },
+            "ServiceUsage": {
+                "id": "string",
+                "name": "string",
+                "usage": "string - 服务使用说明/用法"
+            },
+            "TaskInput": {
+                "task_prompt": "string",
+                "output_prompt": "string",
+                "input_files": ["string"]
+            }
+        },
+        "errors": {
+            "400": "请求参数错误",
+            "401": "认证失败",
+            "404": "资源不存在",
+            "409": "状态冲突"
+        }
+    }))
+}

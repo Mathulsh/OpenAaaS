@@ -1,0 +1,60 @@
+# Rust
+/target
+**/target/
+Cargo.lock
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.sqlite
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+dist/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Local runtime artifacts
+server/config.toml
+server/data/
+server/*.pid
+agent-core/config.toml
+/agent-core/data/
+/agent-core/share/
+/share/
+/agent-core/executor.zip
+/agent-core/config.*.local.toml

@@ -1,0 +1,54 @@
+[package]
+name = "agent-core"
+version = "0.1.0"
+edition = "2024"
+description = "OpenAaaS Agent Core - 调度与执行框架"
+
+[dependencies]
+# 异步运行时
+tokio = { version = "1.0", features = ["full"] }
+
+# JSON 处理
+serde_json = "1.0"
+
+# 序列化/反序列化
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+
+# HTTP 客户端
+reqwest = { version = "0.11", default-features = false, features = ["json", "multipart", "rustls-tls"] }
+
+
+
+# 错误处理
+thiserror = "1.0"
+anyhow = "1.0"
+
+# 日志
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# 跨平台目录
+dirs = "5.0"
+
+# CLI
+clap = { version = "4.0", features = ["derive"] }
+
+# 时间处理
+chrono = { version = "0.4", features = ["serde"] }
+
+# SQLx chrono 支持
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "chrono"] }
+
+
+
+# 集成测试编译时不带 cfg(test)，需要显式启用 test-utils feature 才能访问测试辅助模块。
+# 运行测试: cargo test --features test-utils
+[features]
+default = []
+test-utils = []
+
+[dev-dependencies]
+tempfile = "3.0"
+wiremock = "0.6"
+mockito = "1.0"

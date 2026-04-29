@@ -1,0 +1,48 @@
+# OpenAaaS Agent Core 配置文件示例
+# 复制此文件为 config.toml 并根据需要修改
+
+[server]
+# Server 地址
+base_url = "http://127.0.0.1:8080"
+# 轮询间隔（秒）
+poll_interval_secs = 5
+# 是否使用系统代理（true = 使用系统代理，false = 禁用）
+use_system_proxy = false
+
+[agent]
+# 服务 ID（注册后自动填充，无需手动设置）
+# service_id = "svc-xxx"
+# API Key（注册后自动填充，无需手动设置）
+# api_key = "ak_xxx"
+# Agent 名称
+name = "agent-core"
+
+[executor]
+# 执行器类型：standard / bash / python / custom
+executor_type = "standard"
+# Docker 镜像
+image = "open-aaas-executor:latest"
+# 并发任务数
+capacity = 2
+# 任务超时时间（分钟），0 表示不限制
+timeout_minutes = 0
+# 内存限制（可选）
+# memory_limit = "4g"
+# 工作目录（容器内）
+working_dir = "/workspace"
+# 脚本路径（仅 bash / python 类型使用）
+# script_path = "/workspace/run.sh"
+# 自定义 ENTRYPOINT（仅 custom 类型使用）
+# custom_entrypoint = ["/bin/sh", "-c"]
+# 自定义命令参数（仅 custom 类型使用）
+# custom_args = ["echo", "hello"]
+
+[paths]
+# 数据目录
+data_dir = "./data"
+
+# 挂载配置（可选）
+# [[paths.mounts]]
+# host = "./share/kimi-config"
+# container = "/shared/kimi-config"
+# readonly = true
