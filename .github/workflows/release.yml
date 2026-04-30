@@ -1,0 +1,342 @@
+name: Release
+
+# 手动触发 workflow，支持选择组件和版本号
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: "要发布的组件"
+        required: true
+        type: choice
+        options:
+          - server
+          - agent-core
+        default: server
+      version:
+        description: "发布版本号（SemVer，例如 0.1.1）"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Prepare Job
+  #   - 校验版本号格式
+  #   - 修改对应组件 Cargo.toml 中的版本号
+  #   - 同步 Cargo.lock（如存在）
+  #   - 提交修改、打标签并只推送 tag（不 push main，避免受保护分支限制）
+  # --------------------------------------------------------------------------
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.set-tag.outputs.tag }}
+      binary_name: ${{ steps.set-binary.outputs.binary_name }}
+      component: ${{ github.event.inputs.component }}
+      version: ${{ github.event.inputs.version }}
+    env:
+      COMPONENT: ${{ github.event.inputs.component }}
+      VERSION: ${{ github.event.inputs.version }}
+    steps:
+      # 检出代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      # 校验 version 参数是否符合 SemVer（简单正则：x.y.z，x/y/z 为非负整数）
+      - name: Validate SemVer
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "   Expected SemVer format like 0.1.1"
+            exit 1
+          fi
+          echo "✅ Version format valid: $VERSION"
+
+      # 根据组件设置二进制文件名（用于后续产物命名）
+      - name: Set binary name
+        id: set-binary
+        run: |
+          set -euo pipefail
+          if [[ "$COMPONENT" == "server" ]]; then
+            echo "binary_name=open-aaas-server" >> "$GITHUB_OUTPUT"
+          elif [[ "$COMPONENT" == "agent-core" ]]; then
+            echo "binary_name=agent-core" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unknown component: $COMPONENT"
+            exit 1
+          fi
+
+      # 设置 Git 用户信息
+      - name: Configure Git
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # 使用 Python 脚本修改对应组件 Cargo.toml 中的版本号（仅替换第一个匹配）
+      # 脚本内通过环境变量读取输入，并对 component 做白名单校验
+      - name: Bump version in Cargo.toml
+        run: |
+          set -euo pipefail
+          python3 << 'EOF'
+          import re
+          import os
+          import sys
+
+          component = os.environ.get("COMPONENT", "")
+          version = os.environ.get("VERSION", "")
+
+          if component not in ("server", "agent-core"):
+              print(f"Invalid component: {component}")
+              sys.exit(1)
+
+          toml_path = f"{component}/Cargo.toml"
+
+          with open(toml_path, "r") as f:
+              content = f.read()
+
+          new_content = re.sub(
+              r'^version\s*=\s*"[^"]+"',
+              f'version = "{version}"',
+              content,
+              count=1,
+              flags=re.MULTILINE
+          )
+
+          with open(toml_path, "w") as f:
+              f.write(new_content)
+
+          print(f"Updated {toml_path} version to {version}")
+          EOF
+
+      # 如果 Cargo.lock 存在，用 cargo check 同步其版本信息（只更新该 package 的 version，不升级其他依赖）
+      - name: Sync Cargo.lock
+        run: |
+          set -euo pipefail
+          if [[ -f "${COMPONENT}/Cargo.lock" ]]; then
+            cd "${COMPONENT}"
+            cargo check
+          fi
+
+      # 将变更加入暂存区
+      - name: Stage changes
+        run: |
+          set -euo pipefail
+          git add "${COMPONENT}/Cargo.toml"
+          if [[ -f "${COMPONENT}/Cargo.lock" ]]; then
+            git add -f "${COMPONENT}/Cargo.lock"
+          fi
+
+      # 提交版本号修改（无变更时跳过，避免 commit 失败）
+      - name: Commit version bump
+        run: |
+          set -euo pipefail
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore(${COMPONENT}): bump version to ${VERSION}"
+
+      # 创建并推送标签
+      # - 若本地已有同名 tag，先删除
+      # - 若远程已有同名 tag，直接报错退出，避免覆盖已有 release
+      # - 只 push tag，不 push main（规避受保护分支限制）
+      - name: Create and push tag
+        id: set-tag
+        run: |
+          set -euo pipefail
+          TAG="${COMPONENT}-v${VERSION}"
+
+          # 清理本地已存在的同名 tag
+          if [ -n "$(git tag -l "$TAG")" ]; then
+            git tag -d "$TAG" || true
+          fi
+
+          # 检查远程是否已有该 tag
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "refs/tags/${TAG}"; then
+            echo "❌ Tag ${TAG} already exists on remote. Aborting to avoid overwriting existing release."
+            exit 1
+          fi
+
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "✅ Created and pushed tag: ${TAG}"
+
+  # --------------------------------------------------------------------------
+  # Build Job
+  #   - 在 4 个目标平台上执行矩阵构建
+  #   - 每个平台先测试，再编译 release 二进制文件并打包
+  # --------------------------------------------------------------------------
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            os: linux
+            arch: x64
+          - runner: macos-13
+            target: x86_64-apple-darwin
+            os: macos
+            arch: x64
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            os: macos
+            arch: arm64
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            os: windows
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    env:
+      COMPONENT: ${{ needs.prepare.outputs.component }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+      BINARY_NAME: ${{ needs.prepare.outputs.binary_name }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      # 通过标签检出代码（确保拿到 prepare job 提交的最新版本）
+      - name: Checkout code at release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      # 安装 Rust stable 工具链，并安装对应目标平台
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # 缓存 Rust 构建产物，减少矩阵编译时间
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # 先执行测试，阻断有 bug 的版本直接发布。
+      # 注意：当前矩阵仅限于原生构建（runner 架构与 target 一一对应）。
+      # 若未来加入交叉编译目标，此测试步骤需要调整。
+      - name: Run tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "${COMPONENT}"
+          cargo test --target ${{ matrix.target }}
+
+      # 在对应组件目录下执行 release 构建
+      - name: Build release binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "${COMPONENT}"
+          cargo build --release --target ${{ matrix.target }}
+
+      # 创建临时目录，复制二进制文件 + README + LICENSE
+      # 同时计算出产物包名和扩展名信息
+      - name: Prepare staging directory
+        id: staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          BINARY_NAME="${{ env.BINARY_NAME }}"
+          VERSION="${{ env.VERSION }}"
+          OS="${{ matrix.os }}"
+          ARCH="${{ matrix.arch }}"
+          PACKAGE_NAME="${BINARY_NAME}-${VERSION}-${OS}-${ARCH}"
+
+          mkdir -p "${PACKAGE_NAME}"
+
+          # Windows 二进制文件带 .exe 后缀
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            BINARY_EXT=".exe"
+          else
+            BINARY_EXT=""
+          fi
+
+          # 复制产物
+          cp "${COMPONENT}/target/${{ matrix.target }}/release/${BINARY_NAME}${BINARY_EXT}" "${PACKAGE_NAME}/"
+          cp README.md "${PACKAGE_NAME}/"
+          cp LICENSE "${PACKAGE_NAME}/"
+
+          echo "package_name=${PACKAGE_NAME}" >> "$GITHUB_ENV"
+          echo "package_name=${PACKAGE_NAME}" >> "$GITHUB_OUTPUT"
+
+          # 根据操作系统决定打包格式
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            echo "archive=${PACKAGE_NAME}.zip" >> "$GITHUB_OUTPUT"
+            echo "checksum=${PACKAGE_NAME}.zip.sha256" >> "$GITHUB_OUTPUT"
+          else
+            echo "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
+            echo "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Linux / macOS：使用 tar 打包并生成 sha256 校验文件
+      - name: Pack artifact (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          tar czf "${{ env.package_name }}.tar.gz" "${{ env.package_name }}"
+          sha256sum "${{ env.package_name }}.tar.gz" > "${{ env.package_name }}.tar.gz.sha256"
+
+      # Windows：使用 PowerShell Compress-Archive 打包并生成 sha256 校验文件
+      # 输出格式与 Linux/macOS 统一: "<hash>  <filename>"
+      - name: Pack artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "${{ env.package_name }}" -DestinationPath "${{ env.package_name }}.zip"
+          $hash = Get-FileHash "${{ env.package_name }}.zip" -Algorithm SHA256
+          $filename = "${{ env.package_name }}.zip"
+          "$($hash.Hash)  $filename" | Out-File -FilePath "${{ env.package_name }}.zip.sha256" -Encoding ASCII
+
+      # 上传构建产物到 artifact storage，供 release job 下载
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            ${{ steps.staging.outputs.archive }}
+            ${{ steps.staging.outputs.checksum }}
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------------
+  # Release Job
+  #   - 下载所有平台的构建产物
+  #   - 创建 GitHub Release 并上传所有资产
+  # --------------------------------------------------------------------------
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # 下载所有构建产物（merge-multiple 会把各 artifact 的文件放到同一目录）
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # 确认产物已就位
+      - name: List artifacts
+        run: |
+          set -euo pipefail
+          ls -la artifacts/
+
+      # 创建 GitHub Release，并上传所有打包文件和校验文件
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: "${{ needs.prepare.outputs.component }} v${{ needs.prepare.outputs.version }}"
+          body: "Release ${{ needs.prepare.outputs.component }} v${{ needs.prepare.outputs.version }}"
+          files: artifacts/*
