@@ -164,13 +164,20 @@ async fn run_foreground(config_path: PathBuf, interactive: bool) -> anyhow::Resu
     // 优雅退出处理
     let scheduler_clone = scheduler.command_sender();
     tokio::spawn(async move {
-        let mut sigint = signal::unix::signal(signal::unix::SignalKind::interrupt()).ok();
-        let mut sigterm = signal::unix::signal(signal::unix::SignalKind::terminate()).ok();
+        #[cfg(unix)]
+        {
+            let mut sigint = signal::unix::signal(signal::unix::SignalKind::interrupt()).ok();
+            let mut sigterm = signal::unix::signal(signal::unix::SignalKind::terminate()).ok();
 
-        tokio::select! {
-            _ = async { sigint.as_mut()?.recv().await }, if sigint.is_some() => {}
-            _ = async { sigterm.as_mut()?.recv().await }, if sigterm.is_some() => {}
-            _ = signal::ctrl_c() => {}
+            tokio::select! {
+                _ = async { sigint.as_mut()?.recv().await }, if sigint.is_some() => {}
+                _ = async { sigterm.as_mut()?.recv().await }, if sigterm.is_some() => {}
+                _ = signal::ctrl_c() => {}
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = signal::ctrl_c().await;
         }
 
         info!("收到退出信号，正在优雅停止...");
