@@ -1175,10 +1175,26 @@ export default function (pi: ExtensionAPI) {
             }
           }
 
+          const targetUrl = stripTrailingSlash(serverUrl);
+          if (config.servers) {
+            for (const [otherAlias, otherServer] of Object.entries(config.servers)) {
+              if (otherAlias === alias) continue;
+              const otherUrl = stripTrailingSlash(otherServer.server_url || "");
+              if (otherUrl === targetUrl && typeof otherServer.api_key === "string" && otherServer.api_key) {
+                throw new Error(
+                  `该服务器地址已被其他别名注册过。\n` +
+                  `服务器别名: ${otherAlias}\n` +
+                  `服务器地址: ${otherServer.server_url}\n\n` +
+                  `如需使用此别名，请先使用 remove_server 删除已有配置。`
+                );
+              }
+            }
+          }
+
           if (!config.servers) config.servers = {};
           if (!config.servers[alias]) config.servers[alias] = { server_url: "" };
           const oldUrl = stripTrailingSlash(config.servers[alias].server_url || "");
-          config.servers[alias].server_url = stripTrailingSlash(serverUrl);
+          config.servers[alias].server_url = targetUrl;
 
           let warning = "";
           if (oldUrl && oldUrl !== config.servers[alias].server_url && !config.servers[alias].api_key) {
@@ -1243,6 +1259,39 @@ export default function (pi: ExtensionAPI) {
                 name: savedName,
               },
             };
+          }
+
+          // 检查是否有其他别名已注册到同一服务器地址
+          const config = loadConfig();
+          const currentUrl = stripTrailingSlash(sc.server_url || "");
+          if (config.servers) {
+            for (const [otherAlias, otherServer] of Object.entries(config.servers)) {
+              if (otherAlias === sc.alias) continue;
+              const otherUrl = stripTrailingSlash(otherServer.server_url || "");
+              if (otherUrl === currentUrl && typeof otherServer.api_key === "string" && otherServer.api_key) {
+                return {
+                  content: [
+                    {
+                      type: "text",
+                      text:
+                        `该服务器地址已被其他别名注册过。\n` +
+                        `服务器别名: ${otherAlias}\n` +
+                        `服务器地址: ${otherServer.server_url}\n` +
+                        `客户端 ID: ${otherServer.client_id || "unknown"}\n` +
+                        `用户名: ${otherServer.name || "unknown"}\n\n` +
+                        `如需使用其他别名，请先使用 remove_server 删除已有配置。`,
+                    },
+                  ],
+                  details: {
+                    error: "duplicate_server_url",
+                    server_alias: otherAlias,
+                    server_url: otherServer.server_url,
+                    client_id: otherServer.client_id || "unknown",
+                    name: otherServer.name || "unknown",
+                  },
+                };
+              }
+            }
           }
 
           const { server_url: serverUrl, alias } = getServerConfig(params.server);

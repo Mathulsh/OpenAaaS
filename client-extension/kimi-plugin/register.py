@@ -34,7 +34,27 @@ def register(server_url, name):
             "error": "当前默认服务器已注册（存在 API Key），请勿重复注册。如需重新注册，请先使用 remove_server 工具移除当前配置，或切换到其他服务器后再注册。如需向其他服务器注册，请先使用 set_server_url 添加服务器。"
         }
 
-    server_url = server_url.rstrip("/")
+    server_url = server_url.strip().rstrip("/")
+
+    # 检查其他 alias 是否已用相同 URL 注册过
+    default_alias = config.get("default_server", "default")
+    for alias, conf in config.get("servers", {}).items():
+        if alias == default_alias:
+            continue
+        if not isinstance(conf, dict):
+            continue
+        if (conf.get("server_url") or "").rstrip("/") == server_url and conf.get("api_key"):
+            return {
+                "error": (
+                    f"该服务器地址已被其他别名注册过。\n"
+                    f"服务器别名: {alias}\n"
+                    f"服务器地址: {conf.get('server_url') or server_url}\n"
+                    f"客户端 ID: {conf.get('client_id', 'unknown')}\n"
+                    f"用户名: {conf.get('name', 'unknown')}\n\n"
+                    f"如需使用其他别名，请先使用 remove_server 工具删除已有配置。"
+                )
+            }
+
     url = f"{server_url}/api/v1/client/auth/register"
     
     payload = {

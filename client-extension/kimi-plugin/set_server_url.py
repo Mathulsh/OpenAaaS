@@ -25,10 +25,26 @@ def set_server(server_name, server_url, api_key="", client_id="", set_as_default
     config = load_config()
     servers = config.setdefault("servers", {})
 
+    # 检查是否有其他别名已注册到同一服务器地址
+    target_url = server_url.rstrip("/")
+    for alias, srv in servers.items():
+        if alias == server_name:
+            continue
+        other_url = srv.get("server_url", "").rstrip("/")
+        if other_url == target_url and srv.get("api_key"):
+            return {
+                "error": (
+                    f"该服务器地址已被其他别名注册过。\n"
+                    f"服务器别名: {alias}\n"
+                    f"服务器地址: {srv.get('server_url', '')}\n\n"
+                    f"如需使用此别名，请先使用 remove_server 工具删除已有配置。"
+                )
+            }
+
     if server_name not in servers:
         servers[server_name] = {}
 
-    servers[server_name]["server_url"] = server_url.rstrip("/")
+    servers[server_name]["server_url"] = target_url
     if api_key:
         servers[server_name]["api_key"] = api_key
     if client_id:
