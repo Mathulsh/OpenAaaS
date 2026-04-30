@@ -55,7 +55,7 @@ Remote Agent (Docker 容器隔离执行)
 
 | 层 | 组件 | 职责 |
 |----|------|------|
-| **客户端 Agent** | pi mono / Kimi Cli / Codex / Open Code / ... | 理解任务、调用远程服务、整合结果 |
+| **客户端 Agent** | pi mono / Kimi Cli / Codex / Open Code / 自研Agent | 理解任务、调用远程服务、整合结果 |
 | **OpenAaaS 网络** | Server (Rust + SQLite) | 任务调度、队列管理、认证授权、文件中转 |
 | **远程 Agent** | agent-core + Docker | 向 Server 注册、短轮询获取任务、隔离执行、上报结果 |
 
@@ -67,9 +67,7 @@ Remote Agent (Docker 容器隔离执行)
 - **🐳 Docker 安全隔离** — 每个任务在独立容器中运行，通过 workspace 挂载实现输入输出，安全可控
 - **💾 嵌入式优先** — SQLite 数据库 + 本地文件存储，无需 Redis/MySQL，单二进制即可部署
 - **🔌 自描述 API** — `GET /api/v1/discovery` 无需认证，返回完整 API 文档、使用流程和示例
-- **📁 文件交换** — Client ↔ Agent 双向文件传输，支持大文件，自动清理
-- **🔐 多层鉴权** — Client Bearer Token + Agent X-Service-ID/X-API-Key + Admin Role，权限清晰
-- **⚖️ 自管负载** — Agent 自行控制并发，Server 不做复杂调度，极简可靠
+- **⚖️  自管负载** — Agent 自行控制并发，Server 不做复杂调度，极简可靠
 - **🧩 渐进式披露** — 默认返回轻量摘要，按需获取详细用法，避免信息过载
 
 ---
@@ -117,7 +115,7 @@ OpenAaaS/
 ├── server/           # HTTP 服务端 (Rust) — 任务调度、队列、鉴权、文件中转
 ├── agent-core/       # Agent 调度器 (Rust) — 注册、轮询、Docker 隔离执行
 ├── dash/             # 调试与管理员工具 (Python/Streamlit)
-└── client-extension/ # 客户端扩展 — pi 插件 + kimi 插件
+└── client-extension/ # 客户端扩展 — pi 插件、kimi 插件
 ```
 
 ---
