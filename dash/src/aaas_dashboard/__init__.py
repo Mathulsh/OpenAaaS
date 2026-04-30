@@ -1,6 +1,12 @@
 """OpenAaaS Dashboard - A Streamlit-based web UI for monitoring tasks."""
 
-__version__ = "0.1.0"
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("open-aaas-dashboard")
+except PackageNotFoundError:
+    __version__ = "unknown"
+
 __author__ = "IDM Explorer Lab"
 
 from .config import Config

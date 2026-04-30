@@ -4,6 +4,7 @@ import os
 
 import streamlit as st
 
+from aaas_dashboard import __version__
 from aaas_dashboard.client import OaaSClient, MockOaaSClient
 from aaas_dashboard.config import Config, get_config
 
@@ -123,7 +124,7 @@ def render_sidebar(config: Config) -> tuple[Config, bool]:
 
         # About
         st.markdown("---")
-        st.markdown("**OpenAaaS Dashboard** v0.1.0")
+        st.markdown(f"**OpenAaaS Dashboard** v{__version__}")
         st.markdown("[Documentation](https://github.com/Wolido/OpenAaaS/dash)")
 
     return Config(

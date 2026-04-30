@@ -5,6 +5,8 @@ import os
 import sys
 from pathlib import Path
 
+from aaas_dashboard import __version__
+
 
 def create_parser() -> argparse.ArgumentParser:
     """Create argument parser.
@@ -77,7 +79,7 @@ Examples:
         "--version",
         "-v",
         action="version",
-        version="%(prog)s 0.1.0",
+        version=f"%(prog)s {__version__}",
     )
     
     return parser
