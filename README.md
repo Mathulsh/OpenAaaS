@@ -72,6 +72,16 @@ Remote Agent (Docker 容器隔离执行)
 
 ---
 
+## Try it Online
+
+我们提供公共试用服务器 **`api.open-aaas.com`**，无需本地部署即可体验。
+
+在支持 OpenAaaS 的客户端 Agent 中直接指定服务器地址，自动完成注册后即可提交任务：
+
+> "帮我设置 OpenAaaS 的服务器地址为 api.open-aaas.com，然后提交一个任务"
+
+---
+
 ## Quick Start
 
 ### 1. 启动 Server
