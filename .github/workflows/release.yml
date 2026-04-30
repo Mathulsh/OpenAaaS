@@ -230,7 +230,11 @@ jobs:
         run: |
           set -euo pipefail
           cd "${COMPONENT}"
-          cargo test --target ${{ matrix.target }}
+          if [ "${COMPONENT}" = "agent-core" ]; then
+            cargo test --features test-utils --target ${{ matrix.target }}
+          else
+            cargo test --target ${{ matrix.target }}
+          fi
 
       # 在对应组件目录下执行 release 构建
       - name: Build release binary
