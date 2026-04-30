@@ -24,8 +24,12 @@ pub struct TestApp {
 
 impl TestApp {
     pub async fn new() -> Self {
-        let db_file = format!("/tmp/test_open_aaas_{}.db", Uuid::new_v4().simple());
-        let database_url = format!("sqlite:{}", db_file);
+        let db_file = std::env::temp_dir()
+            .join(format!("test_open_aaas_{}.db", Uuid::new_v4().simple()))
+            .to_str()
+            .expect("temp dir path should be valid UTF-8")
+            .replace('\\', "/");
+        let database_url = format!("sqlite:///{}?mode=rwc", db_file);
 
         let config = AppConfig {
             secret_key: Some(TEST_SECRET_KEY.to_string()),
@@ -33,7 +37,11 @@ impl TestApp {
                 url: database_url.clone(),
             },
             task: open_aaas_server::config::TaskConfig {
-                file_storage_path: format!("/tmp/test_files_{}", Uuid::new_v4().simple()),
+                file_storage_path: std::env::temp_dir()
+                    .join(format!("test_files_{}", Uuid::new_v4().simple()))
+                    .to_str()
+                    .expect("temp dir path should be valid UTF-8")
+                    .to_string(),
                 max_file_size_mb: 10,
                 ..Default::default()
             },
@@ -74,9 +82,16 @@ impl TestApp {
 
     pub async fn cleanup(&self) {
         self.db_pool.close().await;
-        let db_file = self.config.database.url.replace("sqlite:", "");
-        let _ = tokio::fs::remove_file(&db_file).await;
-        let _ = tokio::fs::remove_dir_all(&self.config.task.file_storage_path).await;
+        let db_url = &self.config.database.url;
+        let db_file = db_url.strip_prefix("sqlite:").unwrap_or(db_url);
+        let db_file = db_file.strip_prefix("///").unwrap_or(db_file);
+        let db_file = db_file.split('?').next().unwrap_or(db_file);
+        if let Err(e) = tokio::fs::remove_file(&db_file).await {
+            eprintln!("Warning: failed to remove test db file {}: {}", db_file, e);
+        }
+        if let Err(e) = tokio::fs::remove_dir_all(&self.config.task.file_storage_path).await {
+            eprintln!("Warning: failed to remove test files dir {}: {}", self.config.task.file_storage_path, e);
+        }
     }
 }
 

@@ -69,9 +69,9 @@ impl StateManager {
             tokio::fs::create_dir_all(parent).await?;
         }
 
-        let path_str = database_path.as_ref().to_string_lossy();
-        // 对于绝对路径，SQLite URI 需要 file:/// 或 sqlite:/// 格式
-        let connection_string = if path_str.starts_with('/') {
+        let path = database_path.as_ref();
+        let path_str = path.to_str().expect("database path should be valid UTF-8").replace('\\', "/");
+        let connection_string = if path.is_absolute() {
             format!("sqlite:///{}?mode=rwc", path_str)
         } else {
             format!("sqlite:{}?mode=rwc", path_str)
@@ -181,7 +181,12 @@ mod tests {
             container_id: Some(format!("container_{}", id)),
             started_at: Some(Utc::now()),
             completed_at: None,
-            output_path: Some(format!("/tmp/output_{}.zip", id)),
+            output_path: Some(
+                std::env::temp_dir()
+                    .join(format!("output_{}.zip", id))
+                    .to_str().expect("temp dir path should be valid UTF-8")
+                    .to_string(),
+            ),
             error_message: None,
         }
     }

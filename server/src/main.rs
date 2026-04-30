@@ -649,9 +649,19 @@ fn runtime_admin_api_key(config: &AppConfig) -> Option<String> {
 }
 
 fn apply_server_data_dir(config: &mut AppConfig, data_dir: &str) {
-    let normalized = data_dir.trim_end_matches('/');
-    config.database.url = format!("sqlite:{normalized}/app.db");
-    config.task.file_storage_path = format!("{normalized}/files");
+    let data_path = std::path::PathBuf::from(data_dir);
+    let db_path = data_path.join("app.db");
+    let path_str = db_path.to_str().expect("data dir path should be valid UTF-8").replace('\\', "/");
+    config.database.url = if db_path.is_absolute() {
+        format!("sqlite:///{}", path_str)
+    } else {
+        format!("sqlite:{}", path_str)
+    };
+    config.task.file_storage_path = data_path
+        .join("files")
+        .to_str()
+        .expect("data dir path should be valid UTF-8")
+        .to_string();
 }
 
 fn choose_server_data_dir(interactive: bool, default_dir: &str) -> anyhow::Result<String> {
@@ -695,6 +705,9 @@ fn ensure_server_runtime_dirs(config: &AppConfig) -> anyhow::Result<()> {
 
 fn database_dir_from_url(url: &str) -> Option<PathBuf> {
     let path = url.strip_prefix("sqlite:")?;
+    // 处理三斜杠绝对路径格式: sqlite:///C:/path → C:/path
+    let path = path.strip_prefix("///").unwrap_or(path);
+    let path = path.split(&['?', '#']).next().unwrap_or(path);
     let db_path = PathBuf::from(path);
     db_path.parent().map(PathBuf::from)
 }

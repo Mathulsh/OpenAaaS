@@ -390,7 +390,7 @@ heartbeat_timeout_secs = 120
 
 [task]
 result_retention_days = 14
-file_storage_path = "/tmp/files"
+file_storage_path = "files"
 max_file_size_mb = 100
 "#;
 
@@ -409,7 +409,7 @@ max_file_size_mb = 100
 
         // 验证任务配置
         assert_eq!(config.task.result_retention_days, 14);
-        assert_eq!(config.task.file_storage_path, "/tmp/files");
+        assert_eq!(config.task.file_storage_path, "files");
         assert_eq!(config.task.max_file_size_mb, 100);
 
         // 验证Secret Key和日志级别
