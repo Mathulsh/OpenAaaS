@@ -15,7 +15,7 @@ pub async fn discovery(State(_state): State<AppState>) -> Json<Value> {
             "version": env!("CARGO_PKG_VERSION"),
             "base_url": "/api/v1"
         },
-        "instructions": "你是一个 OpenAaaS 客户端代理。你的工作流程是：\n\n1. **认证**：如果用户没有 api_key，调用 register 获取并保存\n2. **浏览服务**：调用 list_services 获取轻量服务列表（id, name, description, status）\n3. **了解服务**：对候选服务调用 get_service_usage 获取详细用法说明\n4. **提交任务**：根据 usage 说明构造 task_prompt 和 output_prompt，调用 submit_task\n5. **跟踪结果**：保存返回的 task_id。需要结果时调用 get_task 查询状态，或用 list_files + download_file 获取结果\n\n重要原则：\n- 遵循渐进式披露：先 list_services 筛选，再 get_service_usage 获取详情，避免一次性加载大量长文本\n- public 服务自动可用；restricted 服务需要 has_permission=true\n- 任务异步执行，提交后立即返回，不要立即阻塞轮询，待用户需要时再调用 get_task 查询状态\n- submit_task 使用 multipart/form-data，可附带文件",
+        "instructions": "你是一个 OpenAaaS 客户端代理。你的工作流程是：\n\n1. **认证**：如果用户没有 api_key，调用 register 获取并保存\n2. **浏览服务**：调用 list_services 获取轻量服务列表（id, name, description, agent_status）\n3. **了解服务**：对候选服务调用 get_service_usage 获取详细用法说明\n4. **提交任务**：根据 usage 说明构造 task_prompt 和 output_prompt，调用 submit_task\n5. **跟踪结果**：保存返回的 task_id。需要结果时调用 get_task 查询状态，或用 list_files + download_file 获取结果\n\n重要原则：\n- 遵循渐进式披露：先 list_services 筛选，再 get_service_usage 获取详情，避免一次性加载大量长文本\n- public 服务自动可用；restricted 服务需要 has_permission=true\n- 任务异步执行，提交后立即返回，不要立即阻塞轮询，待用户需要时再调用 get_task 查询状态\n- submit_task 使用 multipart/form-data，可附带文件",
         "design_principles": {
             "progressive_disclosure": "信息渐进式披露：API 设计遵循'先摘要筛选，再按需详情'的原则。list_services 返回轻量列表（name + description + status），不占用上下文；get_service_usage 按需获取单个服务的详细用法说明。调用方应先浏览列表筛选候选，再对目标服务获取 usage，避免一次性加载大量长文本。"
         },
@@ -26,7 +26,7 @@ pub async fn discovery(State(_state): State<AppState>) -> Json<Value> {
         "workflows": {
             "client_register": {
                 "steps": [
-                    "1. POST /api/v1/client/auth/register - 注册获取 API Key",
+                    "1. POST /client/auth/register - 注册获取 API Key",
                     "2. 保存返回的 api_key，用于后续请求认证",
                     "3. 建议在调用方项目目录写入 .env，例如 OPEN_AAAS_API_KEY={api_key}",
                     "4. GET /client/services - 获取轻量服务列表浏览可用服务",
@@ -38,7 +38,7 @@ pub async fn discovery(State(_state): State<AppState>) -> Json<Value> {
             },
             "submit_task": {
                 "steps": [
-                    "1. GET /client/services - 获取轻量服务列表（name/description/status），浏览筛选候选",
+                    "1. GET /client/services - 获取轻量服务列表（name/description/agent_status），浏览筛选候选",
                     "2. GET /client/services/{id}/usage - 对筛选出的候选服务，按需获取详细 usage（能力范围、调用规范）",
                     "3. 根据 usage 说明，构造正确的 task_prompt 和 output_prompt",
                     "4. POST /client/tasks - 创建任务（multipart/form-data，可带文件）",
@@ -113,6 +113,8 @@ pub async fn discovery(State(_state): State<AppState>) -> Json<Value> {
                             "name": "string",
                             "description": "string|null",
                             "agent_status": "online|offline|busy",
+                            "registration_status": "string - 注册状态",
+                            "agent_last_heartbeat": "string|null - 最后心跳时间",
                             "access_type": "public|restricted",
                             "has_permission": "true|false"
                         }
@@ -130,18 +132,6 @@ pub async fn discovery(State(_state): State<AppState>) -> Json<Value> {
                     "usage": "string - 服务使用说明/用法"
                 },
                 "note": "渐进式披露的关键步骤：在 list_services 筛选出候选服务后，调用此接口获取目标服务的详细 usage（能力范围、调用规范、返回格式、限制条件）。usage 内容通常较长，只应在确定使用该服务时获取，避免占用上下文。"
-            },
-            {
-                "name": "grant_permission",
-                "method": "POST",
-                "path": "/client/services/{id}/grant",
-                "auth": "需要管理员权限",
-                "body": {
-                    "user_id": "string (必需) - 要授权的 Client ID"
-                },
-                "response": {
-                    "success": "true|false"
-                }
             },
             {
                 "name": "download_file",
@@ -168,34 +158,6 @@ pub async fn discovery(State(_state): State<AppState>) -> Json<Value> {
                     "created_at": "ISO8601"
                 }
             },
-            {
-                "name": "create_service",
-                "method": "POST",
-                "path": "/api/v1/admin/services",
-                "auth": "需要管理员权限",
-                "body": {
-                    "name": "string (必需) - 服务名称",
-                    "description": "string (必需) - 服务描述",
-                    "usage": "string (必需) - 服务使用说明/用法",
-                    "is_public": "boolean (可选) - 是否公开服务，默认true"
-                },
-                "response": {
-                    "id": "string",
-                    "name": "string",
-                    "description": "string",
-                    "usage": "string - 服务使用说明/用法",
-                    "agent_status": "online|offline|busy",
-                    "access_type": "public|restricted"
-                },
-                "example": {
-                    "request": {
-                        "name": "example-agent",
-                        "description": "示例智能体",
-                        "usage": "通用AI助手，可以：\n1. 代码编写与调试\n2. 文档处理\n3. 数据分析",
-                        "is_public": true
-                    }
-                }
-            }
         ],
         "types": {
             "ServiceListItem": {
@@ -203,6 +165,8 @@ pub async fn discovery(State(_state): State<AppState>) -> Json<Value> {
                 "name": "string",
                 "description": "string",
                 "agent_status": "online|offline|busy",
+                "registration_status": "string - 注册状态",
+                "agent_last_heartbeat": "string|null - 最后心跳时间",
                 "access_type": "public|restricted",
                 "has_permission": "true|false"
             },
