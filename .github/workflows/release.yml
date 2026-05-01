@@ -264,7 +264,7 @@ jobs:
 
           # 复制产物
           cp "${COMPONENT}/target/${{ matrix.target }}/release/${BINARY_NAME}${BINARY_EXT}" "${PACKAGE_NAME}/"
-          cp README.md "${PACKAGE_NAME}/"
+          cp "${COMPONENT}/README.md" "${PACKAGE_NAME}/"
           cp LICENSE "${PACKAGE_NAME}/"
 
           echo "package_name=${PACKAGE_NAME}" >> "$GITHUB_ENV"
