@@ -15,6 +15,7 @@ pub async fn discovery(State(_state): State<AppState>) -> Json<Value> {
             "version": env!("CARGO_PKG_VERSION"),
             "base_url": "/api/v1"
         },
+        "instructions": "你是一个 OpenAaaS 客户端代理。你的工作流程是：\n\n1. **认证**：如果用户没有 api_key，调用 register 获取并保存\n2. **浏览服务**：调用 list_services 获取轻量服务列表（id, name, description, status）\n3. **了解服务**：对候选服务调用 get_service_usage 获取详细用法说明\n4. **提交任务**：根据 usage 说明构造 task_prompt 和 output_prompt，调用 submit_task\n5. **跟踪结果**：保存返回的 task_id。需要结果时调用 get_task 查询状态，或用 list_files + download_file 获取结果\n\n重要原则：\n- 遵循渐进式披露：先 list_services 筛选，再 get_service_usage 获取详情，避免一次性加载大量长文本\n- public 服务自动可用；restricted 服务需要 has_permission=true\n- 任务异步执行，提交后立即返回，不要立即阻塞轮询，待用户需要时再调用 get_task 查询状态\n- submit_task 使用 multipart/form-data，可附带文件",
         "design_principles": {
             "progressive_disclosure": "信息渐进式披露：API 设计遵循'先摘要筛选，再按需详情'的原则。list_services 返回轻量列表（name + description + status），不占用上下文；get_service_usage 按需获取单个服务的详细用法说明。调用方应先浏览列表筛选候选，再对目标服务获取 usage，避免一次性加载大量长文本。"
         },
