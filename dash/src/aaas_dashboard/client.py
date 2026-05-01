@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Optional, Union
 from enum import Enum
 import uuid
+from urllib.parse import urljoin, urlparse
 
 import requests
 from pydantic import BaseModel, Field, ValidationError
@@ -332,6 +333,54 @@ class OaaSClient:
         except requests.RequestException:
             return False
 
+    def _post_multipart_with_redirects(
+        self,
+        url: str,
+        opened_files: Optional[list[Any]] = None,
+        timeout: int = 60,
+        max_redirects: int = 3,
+        **request_kwargs,
+    ) -> tuple[requests.Response, str, int]:
+        """POST multipart with manual redirect following.
+
+        Uses allow_redirects=False and follows 3xx redirects manually,
+        preserving POST method and rewinding file handles.
+        Authorization header is stripped if redirect crosses domains.
+        """
+        original_url = url
+        redirect_count = 0
+        response = None
+
+        while True:
+            # Rewind file handles before each POST
+            if opened_files:
+                for fh in opened_files:
+                    if hasattr(fh, "seek"):
+                        fh.seek(0)
+
+            # Strip Authorization header on cross-domain redirect
+            req_headers = dict(request_kwargs.get("headers", {})) if "headers" in request_kwargs else {}
+            if urlparse(url).netloc != urlparse(original_url).netloc:
+                req_headers["Authorization"] = None
+
+            response = self.session.post(
+                url,
+                timeout=timeout,
+                allow_redirects=False,
+                headers=req_headers if req_headers else None,
+                **{k: v for k, v in request_kwargs.items() if k != "headers"},
+            )
+
+            if 300 <= response.status_code < 400 and redirect_count < max_redirects:
+                location = response.headers.get("Location", "")
+                if location:
+                    url = urljoin(url, location)
+                    redirect_count += 1
+                    continue
+            break
+
+        return response, url, redirect_count
+
     def create_task(
         self,
         service_id: str,
@@ -388,16 +437,17 @@ class OaaSClient:
                     multipart_files.append(("files", (filename, fh, content_type)))
                     fallback_file_parts.append((filename, data, content_type))
 
-            response = self.session.post(
+            response, url, redirect_count = self._post_multipart_with_redirects(
                 url,
                 files=multipart_fields + multipart_files,
-                timeout=60,
-                allow_redirects=False,
+                opened_files=opened_files,
             )
+
             if 300 <= response.status_code < 400:
                 location = response.headers.get("Location", "")
                 self.last_error = (
-                    f"Server URL redirected to {location or '<unknown>'}. "
+                    f"Server URL redirected to {location or '<unknown>'} "
+                    f"after {redirect_count} redirects. "
                     "Use the final HTTPS Server URL directly."
                 )
                 print(f"[ERROR] Failed to create task: {self.last_error}")
@@ -450,17 +500,17 @@ class OaaSClient:
                         manual_headers = {
                             "Content-Type": f"multipart/form-data; boundary={boundary}",
                         }
-                        manual_resp = self.session.post(
+                        manual_resp, url, redirect_count = self._post_multipart_with_redirects(
                             url,
                             data=manual_body,
                             headers=manual_headers,
-                            timeout=60,
-                            allow_redirects=False,
                         )
+
                         if 300 <= manual_resp.status_code < 400:
                             location = manual_resp.headers.get("Location", "")
                             self.last_error = (
-                                f"Server URL redirected to {location or '<unknown>'}. "
+                                f"Server URL redirected to {location or '<unknown>'} "
+                                f"after {redirect_count} redirects. "
                                 "Use the final HTTPS Server URL directly."
                             )
                             print(f"[ERROR] Failed to create task: {self.last_error}")

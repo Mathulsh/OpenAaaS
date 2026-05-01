@@ -467,20 +467,120 @@ class TestClientCreateTask:
         assert "Input should be a valid dictionary" in client.last_error
 
     @responses.activate
-    def test_client_create_task_redirect_response(self, client, mock_server_url):
-        """Test creating a task reports redirects instead of treating them as success."""
+    def test_client_create_task_follows_redirect(self, client, mock_server_url, sample_task_data):
+        """Test creating a task follows redirect and succeeds."""
         responses.add(
             responses.POST,
             f"{mock_server_url}/api/v1/client/tasks",
             status=301,
             headers={"Location": "https://example.com/api/v1/client/tasks"},
         )
+        responses.add(
+            responses.POST,
+            "https://example.com/api/v1/client/tasks",
+            json=sample_task_data,
+            status=200,
+        )
+
+        task = client.create_task("code-agent", "prompt", "output")
+
+        assert task is not None
+        assert task.id == "task-test-001"
+
+    @responses.activate
+    def test_client_create_task_redirect_exceeds_max(self, client, mock_server_url):
+        """Test creating a task fails after exceeding max redirects."""
+        for i in range(4):
+            responses.add(
+                responses.POST,
+                f"{mock_server_url}/api/v1/client/tasks" if i == 0 else f"https://example.com/api/v1/client/tasks/{i}",
+                status=301,
+                headers={"Location": f"https://example.com/api/v1/client/tasks/{i + 1}"},
+            )
 
         task = client.create_task("code-agent", "prompt", "output")
 
         assert task is None
         assert client.last_error is not None
+        assert "after 3 redirects" in client.last_error
         assert "Use the final HTTPS Server URL directly" in client.last_error
+
+    @responses.activate
+    def test_client_create_task_follows_relative_redirect(self, client, mock_server_url, sample_task_data):
+        """Test creating a task follows relative redirect and succeeds."""
+        responses.add(
+            responses.POST,
+            f"{mock_server_url}/api/v1/client/tasks",
+            status=301,
+            headers={"Location": "/api/v1/client/tasks"},
+        )
+        responses.add(
+            responses.POST,
+            f"{mock_server_url}/api/v1/client/tasks",
+            json=sample_task_data,
+            status=200,
+        )
+
+        task = client.create_task("code-agent", "prompt", "output")
+
+        assert task is not None
+        assert task.id == "task-test-001"
+
+    @responses.activate
+    def test_client_create_task_redirect_strips_auth_cross_domain(self, client, mock_server_url, sample_task_data):
+        """Test that Authorization header is stripped on cross-domain redirect."""
+        responses.add(
+            responses.POST,
+            f"{mock_server_url}/api/v1/client/tasks",
+            status=301,
+            headers={"Location": "https://example.com/api/v1/client/tasks"},
+        )
+        responses.add(
+            responses.POST,
+            "https://example.com/api/v1/client/tasks",
+            json=sample_task_data,
+            status=200,
+        )
+
+        task = client.create_task("code-agent", "prompt", "output")
+
+        assert task is not None
+        assert task.id == "task-test-001"
+        # Verify second request (cross-domain redirect) has no Authorization header
+        assert len(responses.calls) == 2
+        second_request = responses.calls[1].request
+        assert "Authorization" not in second_request.headers
+
+    def test_post_multipart_with_redirects_rewinds_files(self, client, mock_server_url, sample_task_data):
+        """Test _post_multipart_with_redirects rewinds file handles on redirect."""
+        from unittest.mock import MagicMock
+
+        mock_fh = MagicMock()
+        mock_fh.seek = MagicMock()
+
+        with responses.RequestsMock() as rsps:
+            rsps.add(
+                responses.POST,
+                f"{mock_server_url}/api/v1/client/tasks",
+                status=301,
+                headers={"Location": f"{mock_server_url}/api/v1/client/tasks"},
+            )
+            rsps.add(
+                responses.POST,
+                f"{mock_server_url}/api/v1/client/tasks",
+                json=sample_task_data,
+                status=200,
+            )
+
+            response, url, redirect_count = client._post_multipart_with_redirects(
+                f"{mock_server_url}/api/v1/client/tasks",
+                opened_files=[mock_fh],
+            )
+
+        assert redirect_count == 1
+        assert response.status_code == 200
+        assert mock_fh.seek.call_count == 2
+        mock_fh.seek.assert_called_with(0)
 
 
 class TestClientNetworkError:

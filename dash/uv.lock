@@ -688,6 +688,12 @@ dev = [
     { name = "responses" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "responses" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "freezegun", marker = "extra == 'dev'", specifier = ">=1.2.0" },
@@ -702,6 +708,12 @@ requires-dist = [
     { name = "toml", specifier = ">=0.10.2" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "responses", specifier = ">=0.26.0" },
+]
 
 [[package]]
 name = "packaging"
