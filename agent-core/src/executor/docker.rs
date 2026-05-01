@@ -363,7 +363,7 @@ async fn scan_output_files(workspace: &Path) -> Result<Vec<String>, std::io::Err
             }
 
             if let Ok(relative_path) = path.strip_prefix(workspace) {
-                files.push(relative_path.to_string_lossy().to_string());
+                files.push(relative_path.to_string_lossy().to_string().replace('\\', "/"));
             }
         }
     }
