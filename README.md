@@ -28,7 +28,15 @@ OpenAaaS把这些孤岛连成网络。任何 Agent——无论是 Claude、pi、
 
 同时，我们致力于让网络的使用门槛降到最低。比如，使用手机上的通用大模型App。
 
-<video src="https://github.com/Wolido/OpenAaaS/releases/download/readme-video-v0.1.0/OpenAaaS-kimi.mp4" width="350" controls></video>
+<div align="center">
+<video src="https://github.com/user-attachments/assets/196ae678-e9e7-4c3f-9160-57a3aa7d040b"></video>
+</div>
+
+
+
+
+
+
 
 ## 架构
 
