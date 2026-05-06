@@ -24,7 +24,13 @@
 
 AI 的瓶颈不在模型，而在数据与能力的可及性。实验数据锁在电脑和机房、专家模型分散各处、工具链无法互通。
 
-OpenAaaS把这些孤岛连成网络。任何 Agent——无论是 Claude、pi、Kimi 还是自研系统——都可以通过它调用远程的实验仪器、计算集群和专用分析工具。
+OpenAaaS把这些孤岛连成网络。任何 Agent——无论是 Claude、pi、Kimi Cli 还是自研系统——都可以通过它调用远程的实验仪器、计算集群和专用分析工具。
+
+同时，我们致力于让网络的使用门槛降到最低。比如，使用手机上的通用大模型App。
+
+| 手机端使用流程 | 操作演示 |
+|:------:|:--------:|
+| **Step 1** 打开手机端 Kimi App<br><br>**Step 2** 说"连接 api.open-aaas.com"<br>Agent 自动连接 OpenAaaS 网络<br><br>**Step 3** 获取服务<br>下达任务<br>等待结果返回 | <video src="https://github.com/Wolido/OpenAaaS/releases/download/readme-video-v0.1.0/OpenAaaS-kimi.mp4" width="350" controls></video> |
 
 ## 架构
 
