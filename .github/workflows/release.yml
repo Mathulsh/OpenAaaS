@@ -37,6 +37,7 @@ jobs:
       binary_name: ${{ steps.set-binary.outputs.binary_name }}
       component: ${{ github.event.inputs.component }}
       version: ${{ github.event.inputs.version }}
+      body: ${{ steps.changelog.outputs.body }}
     env:
       COMPONENT: ${{ github.event.inputs.component }}
       VERSION: ${{ github.event.inputs.version }}
@@ -170,6 +171,43 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "✅ Created and pushed tag: ${TAG}"
 
+      # 生成自上一版本以来的变更日志
+      - name: Generate release notes
+        id: changelog
+        run: |
+          set -euo pipefail
+          TAG="${COMPONENT}-v${VERSION}"
+
+          # 找到同组件的上一版本标签（按语义版本排序，排除当前标签本身）
+          PREV_TAG=$(git tag --list "${COMPONENT}-v*" --sort=-v:refname | grep -Fx -v "$TAG" | head -n 1 || true)
+
+          if [ -z "$PREV_TAG" ]; then
+            BODY="🎉 First release of **${COMPONENT} v${VERSION}**"
+          else
+            echo "Previous tag: $PREV_TAG"
+            # 提取两个标签之间、且修改了该组件目录的提交（排除 merge commit 与版本号 bump commit）
+            COMMITS=$(git log "$PREV_TAG".."$TAG" \
+              --no-merges \
+              --format="- %s" \
+              --reverse \
+              -- "${COMPONENT}/" \
+              | grep -F -v "- chore(${COMPONENT}): bump version to" \
+              || true)
+
+            if [ -z "$COMMITS" ]; then
+              BODY="No code changes in **${COMPONENT}** since ${PREV_TAG}."
+            else
+              BODY="## What's Changed in ${COMPONENT}"$'\n\n'"${COMMITS}"
+            fi
+          fi
+
+          # 多行输出写入 GITHUB_OUTPUT
+          {
+            echo 'body<<CHANGELOG_EOF'
+            echo "$BODY"
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
   # --------------------------------------------------------------------------
   # Build Job
   #   - 在 4 个目标平台上执行矩阵构建
@@ -182,7 +220,7 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-musl
             os: linux
             arch: x64
           - runner: macos-latest
@@ -212,6 +250,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      # 为 Linux musl 目标安装 musl-tools（提供 musl-gcc 等工具）
+      - name: Install musl tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
       # 缓存 Rust 构建产物，减少矩阵编译时间
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -219,7 +262,8 @@ jobs:
           key: ${{ matrix.target }}
 
       # 先执行测试，阻断有 bug 的版本直接发布。
-      # 注意：当前矩阵仅限于原生构建（runner 架构与 target 一一对应）。
+      # 注意：当前矩阵仅限于原生构建（runner 架构与 target 一一对应）；
+      # Linux 使用 musl 目标以生成静态链接二进制，可在任意 Linux 发行版运行。
       # 若未来加入交叉编译目标，此测试步骤需要调整。
       - name: Run tests
         shell: bash
@@ -338,5 +382,5 @@ jobs:
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: "${{ needs.prepare.outputs.component }} v${{ needs.prepare.outputs.version }}"
-          body: "Release ${{ needs.prepare.outputs.component }} v${{ needs.prepare.outputs.version }}"
+          body: ${{ needs.prepare.outputs.body }}
           files: artifacts/*
