@@ -28,9 +28,7 @@ OpenAaaS把这些孤岛连成网络。任何 Agent——无论是 Claude、pi、
 
 同时，我们致力于让网络的使用门槛降到最低。比如，使用手机上的通用大模型App。
 
-| 手机端使用流程 | 操作演示 |
-|:------:|:--------:|
-| **Step 1** 打开手机端 Kimi App<br><br>**Step 2** 说"连接 api.open-aaas.com"<br>Agent 自动连接 OpenAaaS 网络<br><br>**Step 3** 获取服务<br>下达任务<br>等待结果返回 | <video src="https://github.com/Wolido/OpenAaaS/releases/download/readme-video-v0.1.0/OpenAaaS-kimi.mp4" width="350" controls></video> |
+<video src="https://github.com/Wolido/OpenAaaS/releases/download/readme-video-v0.1.0/OpenAaaS-kimi.mp4" width="350" controls></video>
 
 ## 架构
 
