@@ -58,3 +58,4 @@ agent-core/config.toml
 /share/
 /agent-core/executor.zip
 /agent-core/config.*.local.toml
+dash/uv.lock
