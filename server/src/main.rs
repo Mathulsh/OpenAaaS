@@ -9,6 +9,7 @@ use axum::{
 };
 use clap::{Parser, Subcommand};
 use std::io::{self, IsTerminal, Write};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::net::TcpListener;
@@ -69,6 +70,7 @@ fn load_config_from_path(path: &PathBuf) -> anyhow::Result<AppConfig> {
 
 fn prepare_server_config(config_path: &PathBuf) -> anyhow::Result<AppConfig> {
     let interactive = io::stdin().is_terminal() && io::stdout().is_terminal();
+    let is_first_startup = !config_path.exists();
     let mut changed = false;
 
     let mut config = if config_path.exists() {
@@ -86,6 +88,28 @@ fn prepare_server_config(config_path: &PathBuf) -> anyhow::Result<AppConfig> {
         let data_dir = choose_server_data_dir(interactive, "./data")?;
         apply_server_data_dir(&mut config, &data_dir);
         changed = true;
+    }
+
+    if interactive && is_first_startup {
+        let default_addr = config.server.addr.to_string();
+        let addr = loop {
+            let input = prompt_with_default(
+                "Server listen address",
+                &default_addr,
+                "The address and port the server will bind to.",
+            )?;
+            match input.parse::<SocketAddr>() {
+                Ok(addr) => break addr,
+                Err(e) => {
+                    eprintln!("Invalid address '{}': {}. Please try again.", input, e);
+                    continue;
+                }
+            }
+        };
+        if addr != config.server.addr {
+            config.server.addr = addr;
+            changed = true;
+        }
     }
 
     if secret_needs_generation(config.secret_key.as_deref()) {
