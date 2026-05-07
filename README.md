@@ -20,24 +20,17 @@
 
 ---
 
-**OpenAaaS 是连接 AI 智能体与现实科研设施的桥梁。**
+**OpenAaaS 正在构建科研领域的 Agentic 能力网络。**
 
-AI 的瓶颈不在模型，而在数据与能力的可及性。实验数据锁在电脑和机房、专家模型分散各处、工具链无法互通。
+AI 的瓶颈已从模型能力转向科研能力的可达性。每个实验室都沉淀了独特的数据、算法与流程，但它们分散在孤岛中，无法被发现与调用。OpenAaaS 将这些孤岛接入同一张网络，让任意 Agent 都能发现、调用并组合全球科研节点的能力。
 
-OpenAaaS把这些孤岛连成网络。任何 Agent——无论是 Claude、pi、Kimi Cli 还是自研系统——都可以通过它调用远程的实验仪器、计算集群和专用分析工具。
+任何 Agent——无论是 Claude Code、pi mono、Kimi Cli 还是自研系统——都可以通过网络发现并组合全球科研节点的能力。
 
-同时，我们致力于让网络的使用门槛降到最低。比如，使用手机上的通用大模型App。
+同时，我们致力于让网络的使用门槛降到最低，哪怕是手机上的通用大模型 App。
 
 | 操作视频 | 截图 |
 |:---:|:---:|
-| <video src="https://github.com/user-attachments/assets/196ae678-e9e7-4c3f-9160-57a3aa7d040b"></video> | **连接服务**<img width="372" height="113" alt="截屏2026-05-07 09 36 25" src="https://github.com/user-attachments/assets/d3773d67-9d47-45db-9f5e-3ca96f990981" /><br>**查看服务列表**<img width="379" height="406" alt="截屏2026-05-07 09 37 22" src="https://github.com/user-attachments/assets/d74571ac-b300-411e-9371-b51822531926" /><br>**服务结果返回**<img width="371" height="391" alt="截屏2026-05-07 09 38 09" src="https://github.com/user-attachments/assets/16c9984b-e730-476c-93e7-1aae78f76a5d" /> |
-
-
-
-
-
-
-
+| <video src="https://github.com/user-attachments/assets/196ae678-e9e7-4c3f-9160-57a3aa7d040b"></video> | **接入服务**<img width="372" height="113" alt="截屏2026-05-07 09 36 25" src="https://github.com/user-attachments/assets/d3773d67-9d47-45db-9f5e-3ca96f990981" /><br>**查看服务列表**<img width="379" height="406" alt="截屏2026-05-07 09 37 22" src="https://github.com/user-attachments/assets/d74571ac-b300-411e-9371-b51822531926" /><br>**服务结果返回**<img width="371" height="391" alt="截屏2026-05-07 09 38 09" src="https://github.com/user-attachments/assets/16c9984b-e730-476c-93e7-1aae78f76a5d" /> |
 
 ## 架构
 
@@ -46,18 +39,18 @@ OpenAaaS把这些孤岛连成网络。任何 Agent——无论是 Claude、pi、
     │
     │ HTTP API
     ▼
-OpenAaaS Server — 调度中心 (Rust + SQLite)
+OpenAaaS Server — 网络枢纽 (Rust + SQLite)
     │
     │ 短轮询
     ▼
-Agent Core — 执行节点 (Docker 容器隔离执行)
+Agent Core — 网络节点 (Docker 容器隔离执行)
 ```
 
 | 层级 | 组件 | 职责 |
 |------|------|------|
-| 客户端 Agent | pi mono / Kimi Cli / Codex / Open Code / 自研 Agent | 理解任务、调用远程服务、整合结果 |
-| OpenAaaS 网络 | Server — 科研调度中心 (Rust + SQLite) | 任务调度、队列管理、认证授权、文件中转 |
-| 远程 Agent | agent-core — 实验室执行节点 + Docker | 向 Server 注册、短轮询获取任务、隔离执行、上报结果 |
+| 客户端 Agent | pi mono / Kimi Cli / Codex / Open Code / 自研 Agent | 理解任务、发现网络节点、调度远端能力、整合结果 |
+| 网络枢纽 | Server — 能力注册与调度中心 (Rust + SQLite) | 服务注册、任务路由、节点心跳、文件中转 |
+| 网络节点 | agent-core — 能力执行节点 + Docker | 向网络注册自身能力、轮询认领任务、在沙箱中隔离执行、上报结果 |
 
 ## 设计思路
 
@@ -66,11 +59,11 @@ Agent Core — 执行节点 (Docker 容器隔离执行)
 | Rust + 单二进制 | `cargo build --release` 得到一个可执行文件 | 零依赖部署，复制即用 |
 | SQLite 嵌入式 | 数据库随进程启动，无单独服务 | 零运维，单节点足够 |
 | Docker 隔离 | 每个任务独立容器，workspace 挂载 | 安全可控，环境可复现 |
-| Agent 自管轮询（反向拉取） | Server 只存队列，Agent 自行拉取 | 不需要公网 IP，实验室节点单向出站即可接入 |
+| 节点自组网 | 节点主动向网络注册并轮询任务，Server 仅维护索引 | 节点无需公网 IP，单向出站即可加入网络，天然适应实验室防火墙环境 |
 
 ## 特性
 
-- **🔧 零配置启动** — `open-aaas-server run` 首次启动自动生成 `config.toml`、SQLite 数据库、密钥。无需手动配置，开箱即用。
+- **🔧 节点零配置入网** — `open-aaas-server run` 首次启动自动生成 `config.toml`、SQLite 数据库、密钥。无需手动配置，开箱即用。
 
 - **🐳 每个实验任务独立沙箱，结果可复现** — 每个任务在独立容器中运行，通过 workspace 挂载实现输入输出。环境隔离，结果可追溯、可复现。
 
@@ -78,9 +71,9 @@ Agent Core — 执行节点 (Docker 容器隔离执行)
 
 - **🔌 Agent 零学习成本接入，自描述 API 自动暴露服务文档** — 无需认证，返回完整 API 文档和使用说明。Agent 无需插件即可理解并调用全部科研服务。
 
-- **⚖️ 反向连接，不需要公网 IP** — Agent 自行控制并发和任务认领，Server 只做轻量队列管理。实验室节点只需要单向出站即可接入，无需开放端口或 SSH。
+- **⚖️ 节点反向入网，不需要公网 IP** — 节点自行控制并发和任务认领，Server 只做轻量队列管理。实验室节点只需要单向出站即可接入，无需开放端口或 SSH。
 
-- **🧩 Agent 按需获取仪器文档，避免上下文溢出** — 初次查询返回轻量摘要，再按需返回详细用法。类似 SKILL.md 的渐进式披露设计，保护 Agent 的上下文窗口。
+- **🧩 渐进式能力发现，避免上下文溢出** — 初次查询返回轻量摘要，再按需返回详细用法。类似 SKILL.md 的渐进式披露设计，保护 Agent 的上下文窗口。
 
 ## 使用
 
@@ -92,13 +85,13 @@ Agent Core — 执行节点 (Docker 容器隔离执行)
 - 六元高熵合金描述符数据库
 - 扶摇多专家研讨系统
 
-可以让 Agent 连接公共服务器使用
+可以让 Agent 接入公共服务器使用
 
 ### 快速开始
 
 **场景一：使用公共服务器**
 
-无需自建基础设施，直接配置你的 Agent 连接到公共服务器，即可调用社区共享的科研服务。适合个人研究者快速接入。
+无需自建基础设施，直接配置你的 Agent 接入公共服务器，即可调用社区共享的科研服务。适合个人研究者快速接入。
 
 ### 用 pi / kimi 插件
 
@@ -115,9 +108,9 @@ Agent Core — 执行节点 (Docker 容器隔离执行)
 - 无需认证，返回完整 API 文档和使用说明
 - Agent 读取后即可自动完成注册、服务发现、任务提交
 
-**场景二：部署在实验室服务器，连接仪器设备**
+**场景二：部署在实验室服务器，接入本地能力**
 
-在机房或实验室的本地服务器上启动 OpenAaaS，将仪器控制脚本、专用分析软件注册为服务。课题组内的任何 Agent——pi、Kimi、Claude 或自研系统——都能通过统一入口查询仪器状态、提交分析任务、获取实验数据。
+在机房或实验室的本地服务器上启动 OpenAaaS，将本地分析脚本、专用计算流程注册为网络节点。课题组内的任何 Agent——pi、Kimi、Claude 或自研系统——都能通过统一入口查询节点状态、提交分析任务、获取结果数据。
 
 ### 本地部署
 
@@ -155,8 +148,8 @@ cd executor-example && docker build -t open-aaas-executor:latest .
 
 ```
 OpenAaaS/
-├── server/           # 调度中心 (Rust) — 任务调度、队列、鉴权、文件中转
-├── agent-core/       # 执行节点 (Rust) — 注册、轮询、Docker 隔离执行
+├── server/           # 网络枢纽（调度中心） (Rust) — 任务调度、队列、鉴权、文件中转
+├── agent-core/       # 网络节点（执行节点） (Rust) — 注册、轮询、Docker 隔离执行
 ├── dash/             # 调试与管理员工具 (Python/Streamlit)
 └── client-extension/ # 客户端扩展 — pi 插件、kimi 插件
 ```
@@ -169,7 +162,7 @@ OpenAaaS/
 
 ## 科研愿景
 
-OpenAaaS 的愿景是让每个实验室的能力成为可组合的智能体服务。一台电镜、一个模拟脚本、一段实验数据——不再是孤立的工具，而是 Agentic Science 网络中的标准节点。当仪器能力可以被任意 Agent 发现、调用和组合，科研的边界将从单个实验室扩展到全球协作的智能体网络。
+OpenAaaS 的愿景是让每个实验室都成为 Agentic Science 网络中的一个可组合节点。每个课题组都沉淀了独特的分析流程、数据集与计算方法——这些能力不再困于单一团队，而是网络上可被任意 Agent 发现、调用与编排的标准单元。当科研能力从孤岛走向网络，创新的边界将从单个实验室的闭环，扩展到全球协作的开放生态。
 
 ## 开源许可
 
