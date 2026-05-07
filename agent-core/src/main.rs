@@ -22,6 +22,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 #[derive(Parser)]
 #[command(name = "agent-core")]
 #[command(about = "OpenAaaS Agent Core - 调度与执行框架")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     /// 配置文件路径；不传时读取当前工作目录下的 config.toml
     #[arg(long, global = true, value_name = "FILE")]
