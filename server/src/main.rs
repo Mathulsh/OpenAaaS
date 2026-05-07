@@ -25,6 +25,7 @@ use open_aaas_server::{config::AppConfig, handlers, state::AppState};
 #[derive(Parser)]
 #[command(name = "server")]
 #[command(about = "OpenAaaS Server - 异步Agent即服务")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     /// 配置文件路径；不传时读取当前工作目录下的 config.toml
     #[arg(long, global = true, value_name = "FILE")]
