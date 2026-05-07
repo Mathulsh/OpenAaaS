@@ -171,41 +171,58 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "✅ Created and pushed tag: ${TAG}"
 
-      # 生成自上一版本以来的变更日志
+      # 从 CHANGELOG.md 读取对应版本的变更内容
       - name: Generate release notes
         id: changelog
         run: |
           set -euo pipefail
-          TAG="${COMPONENT}-v${VERSION}"
 
-          # 找到同组件的上一版本标签（按语义版本排序，排除当前标签本身）
-          PREV_TAG=$(git tag --list "${COMPONENT}-v*" --sort=-v:refname | grep -Fx -v "$TAG" | head -n 1 || true)
+          CHANGELOG_PATH="${COMPONENT}/CHANGELOG.md"
 
-          if [ -z "$PREV_TAG" ]; then
-            BODY="🎉 First release of **${COMPONENT} v${VERSION}**"
-          else
-            echo "Previous tag: $PREV_TAG"
-            # 提取两个标签之间、且修改了该组件目录的提交（排除 merge commit 与版本号 bump commit）
-            COMMITS=$(git log "$PREV_TAG".."$TAG" \
-              --no-merges \
-              --format="- %s" \
-              --reverse \
-              -- "${COMPONENT}/" \
-              | grep -F -v "- chore(${COMPONENT}): bump version to" \
-              || true)
-
-            if [ -z "$COMMITS" ]; then
-              BODY="No code changes in **${COMPONENT}** since ${PREV_TAG}."
-            else
-              BODY="## What's Changed in ${COMPONENT}"$'\n\n'"${COMMITS}"
-            fi
+          if [[ ! -f "$CHANGELOG_PATH" ]]; then
+            echo "❌ CHANGELOG.md not found at $CHANGELOG_PATH"
+            exit 1
           fi
+
+          BODY=$(python3 << 'PYEOF'
+          import os
+          import re
+          import sys
+
+          component = os.environ["COMPONENT"]
+          version = os.environ["VERSION"]
+          changelog_path = f"{component}/CHANGELOG.md"
+
+          if not os.path.exists(changelog_path):
+              print(f"❌ CHANGELOG.md not found at {changelog_path}", file=sys.stderr)
+              sys.exit(1)
+
+          with open(changelog_path, "r", encoding="utf-8") as f:
+              content = f.read()
+
+          pattern = rf"^## \[{re.escape(version)}\][^\n]*$"
+          match = re.search(pattern, content, re.MULTILINE)
+          if not match:
+              print(f"❌ Version {version} not found in {changelog_path}", file=sys.stderr)
+              sys.exit(1)
+
+          start = match.end()
+          next_match = re.search(r"^## \[", content[start:], re.MULTILINE)
+          if next_match:
+              end = start + next_match.start()
+          else:
+              end = len(content)
+
+          body = content[start:end].strip()
+          print(body)
+          PYEOF
+          )
 
           # 多行输出写入 GITHUB_OUTPUT
           {
-            echo 'body<<CHANGELOG_EOF'
-            echo "$BODY"
-            echo 'CHANGELOG_EOF'
+            printf '%s\n' 'body<<CHANGELOG_EOF'
+            printf '%s\n' "$BODY"
+            printf '%s\n' 'CHANGELOG_EOF'
           } >> "$GITHUB_OUTPUT"
 
   # --------------------------------------------------------------------------
