@@ -240,6 +240,10 @@ jobs:
             target: x86_64-unknown-linux-musl
             os: linux
             arch: x64
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            os: linux
+            arch: arm64
           - runner: macos-latest
             target: aarch64-apple-darwin
             os: macos
@@ -269,7 +273,7 @@ jobs:
 
       # 为 Linux musl 目标安装 musl-tools（提供 musl-gcc 等工具）
       - name: Install musl tools
-        if: matrix.target == 'x86_64-unknown-linux-musl'
+        if: contains(matrix.target, '-linux-musl')
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       # 缓存 Rust 构建产物，减少矩阵编译时间
