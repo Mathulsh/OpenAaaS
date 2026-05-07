@@ -28,9 +28,13 @@ OpenAaaS把这些孤岛连成网络。任何 Agent——无论是 Claude、pi、
 
 同时，我们致力于让网络的使用门槛降到最低。比如，使用手机上的通用大模型App。
 
-<div align="center">
-<video src="https://github.com/user-attachments/assets/196ae678-e9e7-4c3f-9160-57a3aa7d040b"></video>
-</div>
+| 操作视频 | 截图 |
+|:---:|:---:|
+| <video src="https://github.com/user-attachments/assets/196ae678-e9e7-4c3f-9160-57a3aa7d040b"></video> | **连接服务**<img width="372" height="113" alt="截屏2026-05-07 09 36 25" src="https://github.com/user-attachments/assets/d3773d67-9d47-45db-9f5e-3ca96f990981" /><br>**查看服务列表**<img width="379" height="406" alt="截屏2026-05-07 09 37 22" src="https://github.com/user-attachments/assets/d74571ac-b300-411e-9371-b51822531926" /><br>**服务结果返回**<img width="371" height="391" alt="截屏2026-05-07 09 38 09" src="https://github.com/user-attachments/assets/16c9984b-e730-476c-93e7-1aae78f76a5d" />
+
+
+ |
+
 
 
 
