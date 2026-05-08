@@ -132,7 +132,7 @@ def main():
         # 获取参数
         config = load_config()
         active_conf = config.get("servers", {}).get(config.get("default_server", "default"), {})
-        server_url = active_conf.get("server_url") or config.get("server_url") or "http://localhost:8080"
+        server_url = active_conf.get("server_url") or config.get("server_url") or "https://api.open-aaas.com"
         if not server_url:
             print(json.dumps({"error": "缺少服务端地址，请先使用 set_server_url 设置服务器地址"}, ensure_ascii=False))
             sys.exit(1)

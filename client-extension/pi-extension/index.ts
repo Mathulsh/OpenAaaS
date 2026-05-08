@@ -68,7 +68,7 @@ function ensureConfigDir() {
 function loadConfig(): AppConfig {
   ensureConfigDir();
   const defaultConfig: AppConfig = {
-    servers: { default: { server_url: "http://localhost:8080" } },
+    servers: { default: { server_url: "https://api.open-aaas.com" } },
     default_server: "default",
   };
   if (!existsSync(CONFIG_PATH)) {

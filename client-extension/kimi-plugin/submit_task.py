@@ -180,7 +180,7 @@ def main():
             sys.exit(1)
         
         active_conf = config.get("servers", {}).get(config.get("default_server", "default"), {})
-        server_url = active_conf.get("server_url", config.get("server_url", "http://localhost:8080"))
+        server_url = active_conf.get("server_url", config.get("server_url", "https://api.open-aaas.com"))
         api_key = active_conf.get("api_key", config.get("api_key", ""))
         
         # 获取可选参数
