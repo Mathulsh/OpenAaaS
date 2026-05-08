@@ -137,7 +137,7 @@ def main():
             sys.exit(1)
         
         active_conf = config.get("servers", {}).get(default_server, {})
-        server_url = active_conf.get("server_url") or config.get("server_url") or "http://localhost:8080"
+        server_url = active_conf.get("server_url") or config.get("server_url") or "https://api.open-aaas.com"
         api_key = active_conf.get("api_key", config.get("api_key", ""))
         
         # 执行更新

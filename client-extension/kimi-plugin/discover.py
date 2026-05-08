@@ -62,7 +62,7 @@ def main():
         config = load_config()
         server_name = params.get("server_name", "")
         active_conf = config.get("servers", {}).get(server_name or config.get("default_server", "default"), {})
-        server_url = params.get("server_url", active_conf.get("server_url", config.get("server_url", "http://localhost:8080")))
+        server_url = params.get("server_url", active_conf.get("server_url", config.get("server_url", "https://api.open-aaas.com")))
         
         # 执行发现
         result = discover(server_url)
