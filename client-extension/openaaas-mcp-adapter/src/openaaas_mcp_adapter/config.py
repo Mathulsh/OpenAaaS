@@ -8,7 +8,7 @@ from typing import Any
 DEFAULT_CONFIG: dict[str, Any] = {
     "servers": {
         "default": {
-            "server_url": "http://localhost:8080",
+            "server_url": "https://api.open-aaas.com",
             "api_key": "",
             "client_id": "",
             "name": "",
@@ -64,7 +64,7 @@ def load_config() -> dict[str, Any]:
         parsed = {
             "servers": {
                 "default": {
-                    "server_url": parsed.get("server_url", "http://localhost:8080"),
+                    "server_url": parsed.get("server_url", "https://api.open-aaas.com"),
                     "api_key": parsed.get("api_key", ""),
                     "client_id": parsed.get("client_id", ""),
                     "name": parsed.get("name", ""),

@@ -21,12 +21,12 @@ def load_config():
             if not isinstance(config, dict):
                 return {
                     "error": f"config.json 格式错误: 期望 JSON 对象，实际为 {type(config).__name__}",
-                    "server_url": "http://localhost:8080",
+                    "server_url": "https://api.open-aaas.com",
                     "api_key": "",
                     "client_id": "",
                     "servers": {
                         "default": {
-                            "server_url": "http://localhost:8080",
+                            "server_url": "https://api.open-aaas.com",
                             "api_key": "",
                             "client_id": ""
                         }
@@ -36,12 +36,12 @@ def load_config():
     except Exception as e:
         return {
             "error": f"无法读取 config.json: {str(e)}",
-            "server_url": "http://localhost:8080",
+            "server_url": "https://api.open-aaas.com",
             "api_key": "",
             "client_id": "",
             "servers": {
                 "default": {
-                    "server_url": "http://localhost:8080",
+                    "server_url": "https://api.open-aaas.com",
                     "api_key": "",
                     "client_id": ""
                 }
@@ -52,12 +52,12 @@ def load_config():
     # 兼容旧格式：单服务器配置
     if "servers" not in config and "server_url" in config:
         config = {
-            "server_url": config.get("server_url", "http://localhost:8080"),
+            "server_url": config.get("server_url", "https://api.open-aaas.com"),
             "api_key": config.get("api_key", ""),
             "client_id": config.get("client_id", ""),
             "servers": {
                 "default": {
-                    "server_url": config.get("server_url", "http://localhost:8080"),
+                    "server_url": config.get("server_url", "https://api.open-aaas.com"),
                     "api_key": config.get("api_key", ""),
                     "client_id": config.get("client_id", "")
                 }

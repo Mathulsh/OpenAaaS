@@ -29,7 +29,7 @@ npm install
 {
   "servers": {
     "default": {
-      "server_url": "http://localhost:8080"
+      "server_url": "https://api.open-aaas.com"
     }
   },
   "default_server": "default"
@@ -120,7 +120,7 @@ OpenAaaS(action: "list_servers")
 本插件遵循"信息渐进式披露"原则：不要一次性获取所有服务的完整信息。
 
 **标准使用流程**：
-1. `set_server_url` — 设置服务端地址（如未设置，默认连接 localhost）
+1. `set_server_url` — 设置服务端地址（如未设置，默认连接 https://api.open-aaas.com）
 2. `register` — 注册获取 api_key（仅需一次）
 3. `list_services` — 获取轻量服务列表（id/name/description/agent_status/access_type/has_permission/registration_status），浏览并筛选候选服务
 4. `get_service_usage` — 对筛选出的候选服务，按需获取详细 usage（能力范围、调用规范、返回格式、限制条件）
@@ -164,7 +164,7 @@ OpenAaaS(action: "list_servers")
 
 ## 使用示例
 
-1. 设置服务器地址（可选，默认 http://localhost:8080）：
+1. 设置服务器地址（可选，默认 https://api.open-aaas.com）：
    ```
    OpenAaaS(action: "set_server_url", server_url: "https://www.open-aaas.com")
    ```

@@ -18,7 +18,7 @@
           },
           "server_url": {
             "type": "string",
-            "description": "服务端地址，如 http://localhost:8080"
+            "description": "服务端地址，如 https://api.open-aaas.com"
           },
           "api_key": {
             "type": "string",
