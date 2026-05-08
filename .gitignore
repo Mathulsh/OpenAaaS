@@ -59,3 +59,5 @@ agent-core/config.toml
 /agent-core/executor.zip
 /agent-core/config.*.local.toml
 dash/uv.lock
+
+.venv/
