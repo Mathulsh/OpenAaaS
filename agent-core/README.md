@@ -1,8 +1,7 @@
 # OpenAaaS Agent Core
 
-<p align="right">
-  <a href="./README_EN.md">英文版本</a>
-</p>
+<p align="right">中文版 | <a href="./README.en.md">英文版</a></p>
+
 OpenAaaS 的 Agent 调度器，负责向 Server 注册、轮询获取任务，并通过 Docker 容器隔离执行任务。
 
 ## 编译安装
