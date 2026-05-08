@@ -14,12 +14,6 @@
   <a href="./client-extension/README.md">客户端插件</a>
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Rust-1.85%2B-orange?logo=rust" alt="Rust">
-  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
-  <img src="https://img.shields.io/badge/tests-590%2B-brightgreen" alt="Tests">
-</p>
-
 ---
 
 **代码流动，数据静止 —— 让 AI 走到数据身边，而不是把数据交给 AI。**
