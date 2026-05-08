@@ -132,7 +132,7 @@ Rust + Docker — 部署在数据本地
 
 客户端 Agent 自动完成注册、服务发现、任务提交和结果获取。
 
-### 用 MCP 客户端（Claude Desktop / Cursor / Cline）
+### 用 MCP 客户端
 
 如果你使用的是 **OpenClaw** 或其他支持 MCP（Model Context Protocol）的 Agent，接入 OpenAaaS 网络几乎是零成本的——无需编写任何插件，只需一条配置即可调用全部能力。
 
