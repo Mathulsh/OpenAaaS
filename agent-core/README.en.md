@@ -1,7 +1,6 @@
 # OpenAaaS Agent Core
 
-<p align="right"><a href="./README.md">Chinese</a> | English</p>
-
+<p align="right"><a href="./README.md">中文</a> | English</p>
 
 The Agent scheduler for OpenAaaS, responsible for registering with the Server, polling for tasks, and executing tasks in isolated Docker containers.
 
