@@ -113,9 +113,9 @@ Public Server: **<https://api.open-aaas.com>**
 
 We provide three trial scientific services on the public server:
 
-- IDM-Alpha Metal Materials Literature Research Assistant
-- Hexa-High-Entropy Alloy Descriptor Database
-- Fuyao Multi-Expert Discussion System
+- IDM-Alpha Metal Materials Literature Research Assistant Based on Hundreds of Thousands of Real Papers
+- Trillion-Scale Hexa-High-Entropy Alloy Descriptor Database
+- Fuyao Multi-Agent Roundtable System
 
 You can have your Agent connect to the public server to use them.
 
