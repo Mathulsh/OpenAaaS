@@ -133,7 +133,7 @@ Just say in the conversation:
 
 The client Agent will automatically complete registration, service discovery, task submission, and result retrieval.
 
-### Using an MCP Client (Claude Desktop / Cursor / Cline)
+### Using an MCP Client
 
 If you are using **OpenClaw** or any other Agent that supports MCP (Model Context Protocol), connecting to the OpenAaaS network is nearly zero-cost — no plugins to write, just one configuration entry to invoke all capabilities.
 
