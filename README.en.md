@@ -14,12 +14,6 @@
   <a href="./client-extension/README.md">Client Extensions</a>
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Rust-1.85%2B-orange?logo=rust" alt="Rust">
-  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
-  <img src="https://img.shields.io/badge/tests-590%2B-brightgreen" alt="Tests">
-</p>
-
 ---
 
 **Code flows, data stays still — bring AI to the data, instead of handing data over to AI.**
