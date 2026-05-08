@@ -1,12 +1,35 @@
 [project]
 name = "openaaas-mcp-adapter"
-version = "0.1.0"
-description = "OpenAaaS MCP adapter"
+version = "0.1.1"
+description = "OpenAaaS MCP adapter — connect Claude Desktop, Cursor, Cline to OpenAaaS Server"
+readme = "PYPI_README.md"
 requires-python = ">=3.10"
+license = "MIT"
+keywords = ["mcp", "openaaas", "ai-agent", "claude", "cursor", "cline"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
-    "mcp>=1.0.0,<2.0.0",
+    "fastmcp>=3.0.0",
     "httpx>=0.27.0",
 ]
 
 [project.scripts]
 openaaas-mcp-adapter = "openaaas_mcp_adapter.__main__:main"
+
+[project.urls]
+Homepage = "https://www.open-aaas.com"
+Repository = "https://github.com/Wolido/OpenAaaS"
+Issues = "https://github.com/Wolido/OpenAaaS/issues"
+Documentation = "https://www.open-aaas.com"
+
+[tool.uv]
+package = true

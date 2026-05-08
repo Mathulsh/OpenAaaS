@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 from .config import (
     get_config_dir,
