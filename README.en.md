@@ -18,9 +18,9 @@
 
 **Code flows, data stays still — bring AI to the data, instead of handing data over to AI.**
 
-**OpenAaaS is building an Agentic capability network for scientific research.**
+**OpenAaaS is building a new kind of scientific infrastructure: data stays where it was created, and analytical capabilities flow through the network to reach it.**
 
-The bottleneck of AI has shifted from model capability to the accessibility of scientific capabilities, while "data being forced to move" is a harder constraint than models. Every lab has accumulated unique data, algorithms, and workflows, but they are scattered in silos and cannot be discovered or invoked. OpenAaaS distributes Agent capabilities to data nodes locally, enabling any Agent to discover, invoke, and compose capabilities from scientific nodes around the world — data is processed in place, while code and instructions flow through the network.
+The bottleneck of AI has shifted from model capability to the accessibility of scientific capabilities, while "data being forced to migrate" is a harder constraint than models. Every lab has accumulated unique data, algorithms, and workflows, but they are scattered in silos and cannot be discovered or invoked. OpenAaaS distributes Agent capabilities to data nodes locally, enabling any Agent to discover, invoke, and compose capabilities from scientific nodes around the world — data is processed in place, while code and instructions flow through the network.
 
 Any Agent — whether Claude Code, pi mono, Kimi Cli, or a self-built system — can discover and compose capabilities from scientific nodes across the network through the web.
 
@@ -30,9 +30,27 @@ At the same time, we strive to minimize the barrier to using the network, even f
 |:---:|:---:|
 | <video src="https://github.com/user-attachments/assets/196ae678-e9e7-4c3f-9160-57a3aa7d040b"></video> | **Connect Service**<img width="372" height="113" alt="Screenshot 2026-05-07 09 36 25" src="https://github.com/user-attachments/assets/d3773d67-9d47-45db-9f5e-3ca96f990981" /><br>**View Service List**<img width="379" height="406" alt="Screenshot 2026-05-07 09 37 22" src="https://github.com/user-attachments/assets/d74571ac-b300-411e-9371-b51822531926" /><br>**Service Result Returned**<img width="371" height="391" alt="Screenshot 2026-05-07 09 38 09" src="https://github.com/user-attachments/assets/16c9984b-e730-476c-93e7-1aae78f76a5d" /> |
 
+## Four Core Propositions
+
+### Data Stays In Situ, Capabilities Flow Across Nodes
+
+The real solution to data silos is not moving all the data into one place — it is bringing analytical capabilities to where the data lives. Every lab's accumulated datasets, algorithmic workflows, and domain expertise become composable capability units that any Agent can directly invoke. Agents need not master the full depth of a field in advance; they simply discover, orchestrate, and invoke services from nodes around the world, continuously expanding their knowledge boundaries across materials science, biomedicine, astronomy, and beyond.
+
+### Zero Data Migration, Eliminating Migration Loss
+
+Traditional solutions demand that data be aggregated into a centralized platform — inevitably introducing format conversion distortion, metadata loss, version divergence, and broken compliance audit chains. OpenAaaS builds no unified data warehouse. Data remains at its point of origin, preserved in its original storage format, directory structure, and access permissions. Analysis tasks arrive remotely as code and instructions; results are sent back. Raw data never leaves.
+
+### Schema-Free Onboarding, Raw Format as Service Capability
+
+We impose no upfront format requirements on data. JSON, CSV, Excel, MATLAB `.mat`, HDF5, vendor-specific binary formats from instruments — the local parsing and processing scripts on each node are themselves part of the network's capability. Agents invoke a combined "parse + analyze" service, rather than being required to pre-clean, standardize, or structure the data. Whatever format a lab already has, it is service-ready from day one.
+
+### Near-Data Computing, Data-Movement Cost Approaches Zero
+
+Computation happens next to the data, not the other way around. The network only transmits task descriptions and execution results (KB–MB scale); raw data is processed on-site. For TB-scale datasets and regulated sensitive samples, this means no upload wait, no bandwidth bottleneck, and no outbound compliance review — the marginal cost of moving data approaches zero.
+
 ## Core Design Philosophy
 
-Traditional cloud solutions require data to leave the premises: TB-scale datasets must be uploaded, sensitive samples are handed to third parties, and lab firewalls are forced to open inbound ports. OpenAaaS takes the opposite approach — deploying Agent execution nodes directly where the data resides. The network only transmits task descriptions, task files, and results; raw data is processed on-site.
+Traditional cloud solutions require data to leave the premises: TB-scale datasets must be migrated and uploaded, sensitive samples are handed to third parties, and lab firewalls are forced to open inbound ports. OpenAaaS takes the opposite approach — deploying Agent execution nodes directly where the data resides. The network only transmits task descriptions, task files, and results; raw data stays in place.
 
 | | Traditional Cloud Solution | OpenAaaS Near-Data Solution |
 |---|---|---|
@@ -85,20 +103,21 @@ Rust + Docker — Deployed locally where data resides
 
 ## Features
 
-- **🔒 Data Never Leaves the Premises** — Agent execution nodes are deployed directly on lab servers or instrument workstations. Raw large datasets are processed in-place via local mounts; sensitive data never crosses the firewall. The network only transmits task descriptions, task files, and results; it never touches raw data.
-
-- **🔧 Zero-Config Node Onboarding** — `open-aaas-server run` auto-generates `config.toml`, SQLite database, and keys on first launch. No manual configuration; ready to use out of the box.
-
-- **🐳 Independent Sandbox per Experiment, Reproducible Results** — Each task runs in an isolated container with workspace mounts for input and output. Environment isolation makes results traceable and reproducible.
-
-- **💾 Single Binary, Zero Operations** — SQLite database + local file storage; no Redis/MySQL required. A single node is enough for deployment, ideal for lab edge nodes.
+### Data In-Situ Retention & Cross-Node Capability Flow
 
 - **🔌 Zero-Learning-Cost Agent Integration, Self-Describing API Auto-Exposes Service Docs** — No authentication required; returns complete API documentation and usage instructions. Agents can understand and invoke all scientific services without any plugins.
-
-- **⚖️ Nodes Join via Reverse Connection, No Public IP Needed** — Nodes self-manage concurrency and task claiming; Server only does lightweight queue management. Lab nodes only need unidirectional outbound access to join; no open ports or SSH required.
-
 - **🧩 Progressive Capability Discovery, Avoiding Context Overflow** — Initial queries return lightweight summaries; detailed usage is returned on demand. A progressive disclosure design similar to SKILL.md protects the Agent's context window.
 
+### Zero Data Migration
+
+- **🔒 Data Never Leaves the Premises** — Agent execution nodes are deployed directly on lab servers or instrument workstations. Raw large datasets are processed in-place via local mounts; sensitive data never crosses the firewall. The network only transmits task descriptions, task files, and results; it never touches raw data.
+- **💾 Single Binary, Zero Operations** — SQLite database + local file storage; no Redis/MySQL required. A single node is enough for deployment, ideal for lab edge nodes.
+- **⚖️ Nodes Join via Reverse Connection, No Public IP Needed** — Nodes self-manage concurrency and task claiming; Server only does lightweight queue management. Lab nodes only need unidirectional outbound access to join; no open ports or SSH required.
+
+### Schema-Free Onboarding & Near-Data Computing
+
+- **🐳 Independent Sandbox per Experiment, Reproducible Results** — Each task runs in an isolated container with workspace mounts for input and output. Environment isolation makes results traceable and reproducible.
+- **🔧 Zero-Config Node Onboarding** — `open-aaas-server run` auto-generates `config.toml`, SQLite database, and keys on first launch. No manual configuration; ready to use out of the box.
 - **🤖 MCP Standard Protocol Compatible** — Through `openaaas-mcp-adapter`, any MCP-compatible client such as Claude Desktop, Cursor, or Cline can connect with one click, without writing any plugins.
 
 ## Usage
@@ -201,7 +220,9 @@ OpenAaaS/
 
 ## Research Vision
 
-OpenAaaS's vision is to make every lab a composable node in the Agentic Science network. Each research group has accumulated unique analysis workflows, datasets, and computational methods — these capabilities are no longer trapped within a single team, but become standard units on the network that any Agent can discover, invoke, and orchestrate. When scientific capabilities move from silos to the network, the boundary of innovation will expand from the closed loop of a single lab to an open ecosystem of global collaboration.
+OpenAaaS's vision is to make every lab a composable node in the Agentic Science network. Data is no longer degraded by migration, and knowledge is no longer stalled by silos. Every research group's data morphology, analysis workflows, and domain methods — however unique their storage formats may be — can be discovered, invoked, and orchestrated by any Agent across the network.
+
+When analytical capabilities can flow to where data lives, the knowledge boundary of an Agent expands from the closed loop of a single lab to an open ecosystem of global collaboration. The marginal cost of moving data approaches zero, meaning datasets of any scale can be invoked on demand by Agents anywhere. The frontier of scientific innovation is no longer limited by a single team's data volume or domain depth.
 
 ## Open Source License
 
