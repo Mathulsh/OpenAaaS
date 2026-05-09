@@ -1,5 +1,7 @@
 # OpenAaaS Server
 
+<p align="right"><a href="./README.md">中文</a> | English</p>
+
 The HTTP server for OpenAaaS, responsible for receiving client tasks, dispatching them to agents for execution, and managing the task lifecycle.
 
 ## Build & Install
