@@ -162,6 +162,12 @@ Rust + Docker — 部署在数据本地
 
 配置后重启客户端，即可在对话中调用 OpenAaaS 的 14 个标准 Tool（`set_server_url`、`register`、`list_services`、`submit_task` 等），无需安装任何插件。
 
+甚至，你可以直接让你的Agent帮你配置。
+
+<p align="center">
+  <img alt="mcp" src="https://github.com/user-attachments/assets/b7ff63bf-5fa8-46fa-906b-a8edbd950465" />
+</p>
+
 详见 [client-extension/openaaas-mcp-adapter/README.md](./client-extension/openaaas-mcp-adapter/README.md)。
 
 ### 用通用 Agent 框架
