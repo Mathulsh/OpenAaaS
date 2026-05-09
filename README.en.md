@@ -163,6 +163,12 @@ If you are using **OpenClaw** or any other Agent that supports MCP (Model Contex
 
 After configuring, restart the client, and you can invoke OpenAaaS's 14 standard Tools (`set_server_url`, `register`, `list_services`, `submit_task`, etc.) directly in conversation without installing any plugins.
 
+Or better yet, you can have your Agent set it up for you directly.
+
+<p align="center">
+  <img alt="mcp" src="https://github.com/user-attachments/assets/b7ff63bf-5fa8-46fa-906b-a8edbd950465" />
+</p>
+
 See [client-extension/openaaas-mcp-adapter/README.md](./client-extension/openaaas-mcp-adapter/README.md) for details.
 
 ### Using a General Agent Framework
