@@ -11,7 +11,8 @@
   <a href="./server/README.md">server 文档</a> ·
   <a href="./agent-core/README.md">agent-core 文档</a> ·
   <a href="#使用">使用指南</a> ·
-  <a href="./client-extension/README.md">客户端插件</a>
+  <a href="./client-extension/README.md">客户端插件</a> ·
+  <a href="./client-app/README.md">桌面客户端</a>
 </p>
 
 ---
@@ -170,6 +171,17 @@ Rust + Docker — 部署在数据本地
 
 详见 [client-extension/openaaas-mcp-adapter/README.md](./client-extension/openaaas-mcp-adapter/README.md)。
 
+### 用桌面客户端
+
+如果你偏好图形界面操作，可以使用 **OpenAaaS 桌面客户端**——一个基于 Tauri 的跨平台桌面应用，支持 macOS、Windows 和 Linux。
+
+桌面客户端适合：
+- 不想配置命令行或插件的非技术用户
+- 需要管理多个服务器并直观浏览服务的场景
+- 希望拖拽上传文件、实时查看任务进度的用户
+
+📖 详见 [client-app/README.md](./client-app/README.md)
+
 ### 用通用 Agent 框架
 
 如果你的 Agent 没有 OpenAaaS 插件，让 Agent 直接访问 <https://api.open-aaas.com>
@@ -219,6 +231,7 @@ cd executor-example && docker build -t open-aaas-executor:latest .
 OpenAaaS/
 ├── server/           # 网络枢纽（调度中心） (Rust) — 任务调度、队列、鉴权、文件中转
 ├── agent-core/       # 网络节点（执行节点） (Rust) — 注册、轮询、Docker 隔离执行
+├── client-app/       # 桌面客户端 (Tauri + Vue 3) — 服务市场、任务提交、结果查看
 ├── dash/             # 调试与管理员工具 (Python/Streamlit)
 └── client-extension/ # 客户端扩展 — pi 插件、kimi 插件、MCP 适配器（Claude Desktop / Cursor / Cline）
 ```

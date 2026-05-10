@@ -11,7 +11,8 @@
   <a href="./server/README.md">Server Docs</a> ·
   <a href="./agent-core/README.md">Agent Core Docs</a> ·
   <a href="#Usage">Usage Guide</a> ·
-  <a href="./client-extension/README.md">Client Extensions</a>
+  <a href="./client-extension/README.md">Client Extensions</a> ·
+  <a href="./client-app/README.en.md">Desktop Client</a>
 </p>
 
 ---
@@ -171,6 +172,17 @@ Or better yet, you can have your Agent set it up for you directly.
 
 See [client-extension/openaaas-mcp-adapter/README.md](./client-extension/openaaas-mcp-adapter/README.md) for details.
 
+### Using the Desktop Client
+
+If you prefer a graphical interface, use the **OpenAaaS Desktop Client** — a cross-platform desktop application based on Tauri, supporting macOS, Windows, and Linux.
+
+The desktop client is ideal for:
+- Non-technical users who don't want to configure command-line tools or plugins
+- Managing multiple servers and browsing services visually
+- Drag-and-drop file uploads and real-time task progress tracking
+
+📖 See [client-app/README.en.md](./client-app/README.en.md) for details.
+
 ### Using a General Agent Framework
 
 If your Agent does not have an OpenAaaS plugin, simply have it access <https://api.open-aaas.com>:
@@ -220,6 +232,7 @@ See [agent-core/README.md](./agent-core/README.md) for details.
 OpenAaaS/
 ├── server/           # Network Hub (Scheduling Center) (Rust) — Task scheduling, queuing, auth, file relay
 ├── agent-core/       # Network Node (Execution Node) (Rust) — Registration, polling, Docker-isolated execution
+├── client-app/       # Desktop Client (Tauri + Vue 3) — Service marketplace, task submission, result viewing
 ├── dash/             # Debug and admin tools (Python/Streamlit)
 └── client-extension/ # Client extensions — pi plugin, Kimi plugin, MCP adapter (Claude Desktop / Cursor / Cline)
 ```
