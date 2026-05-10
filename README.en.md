@@ -183,6 +183,10 @@ The desktop client is ideal for:
 
 📖 See [client-app/README.en.md](./client-app/README.en.md) for details.
 
+<p align="center">
+  <img alt="OpenAaaS Client" src="https://github.com/user-attachments/assets/8bc81d68-76da-47c6-a535-83227b27b8bd" width="800" />
+</p>
+
 ### Using a General Agent Framework
 
 If your Agent does not have an OpenAaaS plugin, simply have it access <https://api.open-aaas.com>:

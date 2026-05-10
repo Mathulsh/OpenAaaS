@@ -182,6 +182,10 @@ Rust + Docker — 部署在数据本地
 
 📖 详见 [client-app/README.md](./client-app/README.md)
 
+<p align="center">
+  <img alt="OpenAaaS Client" src="https://github.com/user-attachments/assets/8bc81d68-76da-47c6-a535-83227b27b8bd" width="800" />
+</p>
+
 ### 用通用 Agent 框架
 
 如果你的 Agent 没有 OpenAaaS 插件，让 Agent 直接访问 <https://api.open-aaas.com>
