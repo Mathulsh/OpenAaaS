@@ -3,6 +3,10 @@
 **/target/
 Cargo.lock
 
+# Node.js / JavaScript
+node_modules/
+**/node_modules/
+
 # Environment variables
 .env
 .env.local
@@ -37,6 +41,9 @@ temp/
 # Build artifacts
 dist/
 build/
+
+# Tauri generated
+client-app/src-tauri/gen/
 
 # Python
 __pycache__/
