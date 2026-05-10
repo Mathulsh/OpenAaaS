@@ -53,7 +53,7 @@ async function submit() {
       serviceName: service.value.name,
       title: title.value || '未命名任务',
       taskPrompt: taskPrompt.value,
-      outputPrompt: outputPrompt.value,
+      outputPrompt: outputPrompt.value.trim() || '将结果写入response.md',
       files: files.value ? Array.from(files.value) : undefined,
     })
     uiStore.addToast('任务提交成功', 'success')
@@ -70,10 +70,6 @@ function nextStep() {
   if (step.value === 1) {
     if (!taskPrompt.value.trim()) {
       uiStore.addToast('任务描述不能为空', 'error')
-      return
-    }
-    if (!outputPrompt.value.trim()) {
-      uiStore.addToast('输出要求不能为空', 'error')
       return
     }
   }
@@ -161,12 +157,12 @@ onMounted(async () => {
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-text-secondary mb-1">输出要求 (output_prompt)</label>
+            <label class="block text-sm font-medium text-text-secondary mb-1">输出要求 (output_prompt) - 可选</label>
             <textarea
               v-model="outputPrompt"
               rows="3"
               class="w-full px-3 py-2 bg-bg-primary border border-border rounded-md text-sm focus:border-accent focus:outline-none resize-y"
-              placeholder="描述您期望的输出格式..."
+              placeholder="描述您期望的输出格式，留空则默认：将结果写入response.md"
             />
           </div>
           <div
