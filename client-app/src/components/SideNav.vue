@@ -38,8 +38,8 @@ function isActive(name: string): boolean {
 <template>
   <nav class="w-16 flex-shrink-0 bg-bg-secondary border-r border-border flex flex-col items-center py-4 z-20">
     <!-- Logo -->
-    <div class="mb-6 text-xl font-bold select-none cursor-pointer" @click="navigateTo('home')">
-      OA
+    <div class="mb-6 select-none cursor-pointer" @click="navigateTo('home')">
+      <img src="/logo.png" alt="OpenAaaS" class="w-10 h-auto" />
     </div>
 
     <!-- Nav Items -->
