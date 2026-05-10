@@ -585,7 +585,7 @@ pub async fn accept_task(
             agent_status = CASE
                 WHEN (
                     SELECT COUNT(*) FROM tasks WHERE service_id = ? AND status = 'running'
-                ) > 0 THEN 'busy'
+                ) >= agent_capacity THEN 'busy'
                 WHEN agent_status = 'offline' THEN 'offline'
                 ELSE 'online'
             END
@@ -640,7 +640,7 @@ pub async fn complete_task(
             agent_status = CASE
                 WHEN (
                     SELECT COUNT(*) FROM tasks WHERE service_id = ? AND status = 'running'
-                ) > 0 THEN 'busy'
+                ) >= agent_capacity THEN 'busy'
                 WHEN agent_status = 'offline' THEN 'offline'
                 ELSE 'online'
             END
