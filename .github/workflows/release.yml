@@ -25,9 +25,9 @@ jobs:
   # --------------------------------------------------------------------------
   # Prepare Job
   #   - 校验版本号格式
-  #   - 修改对应组件 Cargo.toml 中的版本号
-  #   - 同步 Cargo.lock（如存在）
-  #   - 提交修改、打标签并只推送 tag（不 push main，避免受保护分支限制）
+  #   - 设置二进制文件名和 tag 名称
+  #   - 从 CHANGELOG.md 生成 release notes
+  #   - 版本号由用户手动管理（提前 push main）
   # --------------------------------------------------------------------------
   prepare:
     runs-on: ubuntu-latest
@@ -77,117 +77,14 @@ jobs:
             exit 1
           fi
 
-      # 设置 Git 用户信息
-      - name: Configure Git
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      # 使用 Python 脚本修改对应组件 Cargo.toml 中的版本号（仅替换第一个匹配）
-      # 脚本内通过环境变量读取输入，并对 component 做白名单校验
-      - name: Bump version in Cargo.toml
-        run: |
-          set -euo pipefail
-          python3 << 'EOF'
-          import re
-          import os
-          import sys
-
-          component = os.environ.get("COMPONENT", "")
-          version = os.environ.get("VERSION", "")
-
-          if component == "client-app":
-              print(f"client-app version is managed manually, skipping auto-bump")
-              sys.exit(0)
-          elif component not in ("server", "agent-core"):
-              print(f"Invalid component: {component}")
-              sys.exit(1)
-
-          toml_path = f"{component}/Cargo.toml"
-
-          with open(toml_path, "r") as f:
-              content = f.read()
-
-          new_content = re.sub(
-              r'^version\s*=\s*"[^"]+"',
-              f'version = "{version}"',
-              content,
-              count=1,
-              flags=re.MULTILINE
-          )
-
-          with open(toml_path, "w") as f:
-              f.write(new_content)
-
-          print(f"Updated {toml_path} version to {version}")
-          EOF
-
-      # 如果 Cargo.lock 存在，用 cargo check 同步其版本信息（只更新该 package 的 version，不升级其他依赖）
-      - name: Sync Cargo.lock
-        run: |
-          set -euo pipefail
-          if [[ "$COMPONENT" == "client-app" ]]; then
-            echo "client-app version managed manually, skipping Cargo.lock sync"
-            exit 0
-          fi
-          if [[ -f "${COMPONENT}/Cargo.lock" ]]; then
-            cd "${COMPONENT}"
-            cargo check
-          fi
-
-      # 将变更加入暂存区
-      - name: Stage changes
-        run: |
-          set -euo pipefail
-          if [[ "$COMPONENT" == "client-app" ]]; then
-            echo "client-app version managed manually, nothing to stage"
-          else
-            git add "${COMPONENT}/Cargo.toml"
-            if [[ -f "${COMPONENT}/Cargo.lock" ]]; then
-              git add -f "${COMPONENT}/Cargo.lock"
-            fi
-          fi
-
-      # 提交版本号修改（无变更时跳过，避免 commit 失败）
-      - name: Commit version bump
-        run: |
-          set -euo pipefail
-          if [[ "$COMPONENT" == "client-app" ]]; then
-            echo "client-app version managed manually, skipping commit"
-            exit 0
-          fi
-          if git diff --cached --quiet; then
-            echo "⚠️ Warning: Cargo.toml already at target version, tag will point to current HEAD"
-            exit 0
-          fi
-          git commit -m "chore(${COMPONENT}): bump version to ${VERSION}"
-
-      # 创建并推送标签
-      # - 若本地已有同名 tag，先删除
-      # - 若远程已有同名 tag，直接报错退出，避免覆盖已有 release
-      # - 只 push tag，不 push main（规避受保护分支限制）
-      - name: Create and push tag
+      # 设置 tag 名称（供后续 job 使用，此处不推送 tag）
+      - name: Set tag name
         id: set-tag
         run: |
           set -euo pipefail
           TAG="${COMPONENT}-v${VERSION}"
-
-          # 清理本地已存在的同名 tag
-          if [ -n "$(git tag -l "$TAG")" ]; then
-            git tag -d "$TAG" || true
-          fi
-
-          # 检查远程是否已有该 tag
-          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "refs/tags/${TAG}"; then
-            echo "❌ Tag ${TAG} already exists on remote. Aborting to avoid overwriting existing release."
-            exit 1
-          fi
-
-          git tag "$TAG"
-          git push origin "$TAG"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "✅ Created and pushed tag: ${TAG}"
+          echo "tag=${TAG}"
 
       # 从 CHANGELOG.md 读取对应版本的变更内容
       - name: Generate release notes
@@ -273,15 +170,11 @@ jobs:
     runs-on: ${{ matrix.runner }}
     env:
       COMPONENT: ${{ needs.prepare.outputs.component }}
-      TAG: ${{ needs.prepare.outputs.tag }}
       BINARY_NAME: ${{ needs.prepare.outputs.binary_name }}
       VERSION: ${{ needs.prepare.outputs.version }}
     steps:
-      # 通过标签检出代码（确保拿到 prepare job 提交的最新版本）
-      - name: Checkout code at release tag
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TAG }}
 
       - name: Check platform support
         id: support
@@ -456,12 +349,46 @@ jobs:
           if-no-files-found: error
 
   # --------------------------------------------------------------------------
+  # Tag Job
+  #   - build 成功后打 tag 并推送
+  #   - build 失败则不会执行，避免产生 orphan tag
+  # --------------------------------------------------------------------------
+  tag:
+    needs: [build, prepare]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check remote tag exists
+        run: |
+          set -euo pipefail
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "refs/tags/${TAG}"; then
+            echo "❌ Tag ${TAG} already exists on remote. Aborting to avoid overwriting existing release."
+            exit 1
+          fi
+
+      - name: Create and push tag
+        run: |
+          set -euo pipefail
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "✅ Created and pushed tag: ${TAG}"
+
+  # --------------------------------------------------------------------------
   # Release Job
   #   - 下载所有平台的构建产物
   #   - 创建 GitHub Release 并上传所有资产
   # --------------------------------------------------------------------------
   release:
-    needs: [prepare, build]
+    needs: [tag, prepare]
     runs-on: ubuntu-latest
     permissions:
       contents: write
