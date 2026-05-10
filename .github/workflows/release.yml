@@ -258,10 +258,18 @@ jobs:
           cd "${COMPONENT}"
           cargo build --release --target ${{ matrix.target }}
 
-      - name: Build Tauri app
-        if: env.COMPONENT == 'client-app' && steps.support.outputs.supported == 'true'
-        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
+      - name: Build Tauri app (Windows)
+        if: env.COMPONENT == 'client-app' && runner.os == 'Windows' && steps.support.outputs.supported == 'true'
+        shell: pwsh
         run: |
+          cd client-app
+          npm run tauri:build
+
+      - name: Build Tauri app (Unix)
+        if: env.COMPONENT == 'client-app' && runner.os != 'Windows' && steps.support.outputs.supported == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
           cd client-app
           npm run tauri:build
 
