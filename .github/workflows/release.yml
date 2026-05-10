@@ -180,9 +180,9 @@ jobs:
         id: support
         shell: bash
         run: |
-          if [[ "${{ env.COMPONENT }}" == "client-app" && "${{ matrix.runner }}" == "ubuntu-24.04-arm" ]]; then
+          if [[ "${{ env.COMPONENT }}" == "client-app" && "${{ runner.os }}" == "Linux" ]]; then
             echo "supported=false" >> "$GITHUB_OUTPUT"
-            echo "⏭️ Skipping client-app build on unsupported platform: ${{ matrix.runner }}"
+            echo "⏭️ Skipping client-app build on Linux"
           else
             echo "supported=true" >> "$GITHUB_OUTPUT"
           fi
@@ -295,19 +295,19 @@ jobs:
               # 查找 dmg 和 app（处理 productName 中的空格）
               find "${BUNDLE_DIR}/dmg" -name "*.dmg" -exec cp {} "${PACKAGE_NAME}/" \; 2>/dev/null || true
               find "${BUNDLE_DIR}/macos" -maxdepth 1 -name "*.app" -type d -exec cp -R {} "${PACKAGE_NAME}/" \; 2>/dev/null || true
-              echo "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
-              echo "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+              printf '%s\n' "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
+              printf '%s\n' "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
             elif [[ "${{ runner.os }}" == "Windows" ]]; then
               # 查找 msi 和 exe（处理 productName 中的空格）
               find "${BUNDLE_DIR}/msi" -name "*.msi" -exec cp {} "${PACKAGE_NAME}/" \; 2>/dev/null || true
               find "${BUNDLE_DIR}/nsis" -name "*.exe" -exec cp {} "${PACKAGE_NAME}/" \; 2>/dev/null || true
-              echo "archive=${PACKAGE_NAME}.zip" >> "$GITHUB_OUTPUT"
-              echo "checksum=${PACKAGE_NAME}.zip.sha256" >> "$GITHUB_OUTPUT"
+              printf '%s\n' "archive=${PACKAGE_NAME}.zip" >> "$GITHUB_OUTPUT"
+              printf '%s\n' "checksum=${PACKAGE_NAME}.zip.sha256" >> "$GITHUB_OUTPUT"
             else
               # 查找 deb（处理 productName 中的空格）
               find "${BUNDLE_DIR}/deb" -name "*.deb" -exec cp {} "${PACKAGE_NAME}/" \; 2>/dev/null || true
-              echo "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
-              echo "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+              printf '%s\n' "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
+              printf '%s\n' "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
             fi
           else
             # Windows 二进制文件带 .exe 后缀
@@ -324,16 +324,16 @@ jobs:
 
             # 根据操作系统决定打包格式
             if [[ "${{ runner.os }}" == "Windows" ]]; then
-              echo "archive=${PACKAGE_NAME}.zip" >> "$GITHUB_OUTPUT"
-              echo "checksum=${PACKAGE_NAME}.zip.sha256" >> "$GITHUB_OUTPUT"
+              printf '%s\n' "archive=${PACKAGE_NAME}.zip" >> "$GITHUB_OUTPUT"
+              printf '%s\n' "checksum=${PACKAGE_NAME}.zip.sha256" >> "$GITHUB_OUTPUT"
             else
-              echo "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
-              echo "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+              printf '%s\n' "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
+              printf '%s\n' "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
             fi
           fi
 
-          echo "package_name=${PACKAGE_NAME}" >> "$GITHUB_ENV"
-          echo "package_name=${PACKAGE_NAME}" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "package_name=${PACKAGE_NAME}" >> "$GITHUB_ENV"
+          printf '%s\n' "package_name=${PACKAGE_NAME}" >> "$GITHUB_OUTPUT"
 
       # Linux / macOS：使用 tar 打包并生成 sha256 校验文件
       - name: Pack artifact (Linux/macOS)
@@ -349,15 +349,16 @@ jobs:
         if: runner.os == 'Windows' && steps.support.outputs.supported == 'true'
         shell: pwsh
         run: |
-          $items = Get-ChildItem -Path "${{ env.package_name }}" -ErrorAction SilentlyContinue
+          $packageName = "${{ env.package_name }}".Trim()
+          $items = Get-ChildItem -Path "$packageName" -ErrorAction SilentlyContinue
           if ($items.Count -eq 0) {
-            Write-Error "No artifacts found in ${{ env.package_name }}"
+            Write-Error "No artifacts found in $packageName"
             exit 1
           }
-          Compress-Archive -Path "${{ env.package_name }}" -DestinationPath "${{ env.package_name }}.zip"
-          $hash = Get-FileHash "${{ env.package_name }}.zip" -Algorithm SHA256
-          $filename = "${{ env.package_name }}.zip"
-          "$($hash.Hash)  $filename" | Out-File -FilePath "${{ env.package_name }}.zip.sha256" -Encoding ASCII
+          Compress-Archive -Path "$packageName" -DestinationPath "$packageName.zip"
+          $hash = Get-FileHash "$packageName.zip" -Algorithm SHA256
+          $filename = "$packageName.zip"
+          "$($hash.Hash)  $filename" | Out-File -FilePath "$packageName.zip.sha256" -Encoding ASCII
 
       # 上传构建产物到 artifact storage，供 release job 下载
       - name: Upload artifact
