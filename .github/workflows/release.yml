@@ -193,6 +193,13 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      # 为 Tauri (Linux) 安装系统依赖
+      - name: Install Tauri dependencies (Linux)
+        if: env.COMPONENT == 'client-app' && runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-1 librsvg2-dev libgtk-3-dev pkg-config
+
       # 为 Linux musl 目标安装 musl-tools（提供 musl-gcc 等工具）
       - name: Install musl tools
         if: env.COMPONENT != 'client-app' && contains(matrix.target, '-linux-musl')
@@ -253,9 +260,8 @@ jobs:
 
       - name: Build Tauri app
         if: env.COMPONENT == 'client-app' && steps.support.outputs.supported == 'true'
-        shell: bash
+        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
         run: |
-          set -euo pipefail
           cd client-app
           npm run tauri:build
 
@@ -278,17 +284,20 @@ jobs:
           if [[ "${{ env.COMPONENT }}" == "client-app" ]]; then
             BUNDLE_DIR="client-app/src-tauri/target/release/bundle"
             if [[ "${{ runner.os }}" == "macOS" ]]; then
-              cp "${BUNDLE_DIR}/dmg/${BINARY_NAME}_${VERSION}_aarch64.dmg" "${PACKAGE_NAME}/" 2>/dev/null || true
-              cp -R "${BUNDLE_DIR}/macos/${BINARY_NAME}.app" "${PACKAGE_NAME}/" 2>/dev/null || true
+              # 查找 dmg 和 app（处理 productName 中的空格）
+              find "${BUNDLE_DIR}/dmg" -name "*.dmg" -exec cp {} "${PACKAGE_NAME}/" \; 2>/dev/null || true
+              find "${BUNDLE_DIR}/macos" -maxdepth 1 -name "*.app" -type d -exec cp -R {} "${PACKAGE_NAME}/" \; 2>/dev/null || true
               echo "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
               echo "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
             elif [[ "${{ runner.os }}" == "Windows" ]]; then
-              cp "${BUNDLE_DIR}/msi/${BINARY_NAME}_${VERSION}_x64_en-US.msi" "${PACKAGE_NAME}/" 2>/dev/null || true
-              cp "${BUNDLE_DIR}/nsis/${BINARY_NAME}_${VERSION}_x64-setup.exe" "${PACKAGE_NAME}/" 2>/dev/null || true
+              # 查找 msi 和 exe（处理 productName 中的空格）
+              find "${BUNDLE_DIR}/msi" -name "*.msi" -exec cp {} "${PACKAGE_NAME}/" \; 2>/dev/null || true
+              find "${BUNDLE_DIR}/nsis" -name "*.exe" -exec cp {} "${PACKAGE_NAME}/" \; 2>/dev/null || true
               echo "archive=${PACKAGE_NAME}.zip" >> "$GITHUB_OUTPUT"
               echo "checksum=${PACKAGE_NAME}.zip.sha256" >> "$GITHUB_OUTPUT"
             else
-              cp "${BUNDLE_DIR}/deb/${BINARY_NAME}_${VERSION}_amd64.deb" "${PACKAGE_NAME}/" 2>/dev/null || true
+              # 查找 deb（处理 productName 中的空格）
+              find "${BUNDLE_DIR}/deb" -name "*.deb" -exec cp {} "${PACKAGE_NAME}/" \; 2>/dev/null || true
               echo "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
               echo "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
             fi
@@ -332,6 +341,11 @@ jobs:
         if: runner.os == 'Windows' && steps.support.outputs.supported == 'true'
         shell: pwsh
         run: |
+          $items = Get-ChildItem -Path "${{ env.package_name }}" -ErrorAction SilentlyContinue
+          if ($items.Count -eq 0) {
+            Write-Error "No artifacts found in ${{ env.package_name }}"
+            exit 1
+          }
           Compress-Archive -Path "${{ env.package_name }}" -DestinationPath "${{ env.package_name }}.zip"
           $hash = Get-FileHash "${{ env.package_name }}.zip" -Algorithm SHA256
           $filename = "${{ env.package_name }}.zip"
