@@ -95,7 +95,6 @@ pub struct ServiceLoadResponse {
     pub available_slots: i64,
     pub pending_tasks: i64,
     pub running_tasks: i64,
-    pub estimated_wait_secs: i64,
     pub last_heartbeat: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -958,17 +957,6 @@ pub async fn get_service_load_handler(
         );
         0
     };
-    // 改进预估等待时间算法
-    let estimated_wait_secs = if available_slots > 0 {
-        0
-    } else if running_count > 0 {
-        // 基于当前运行任务数估算每个任务的平均时间
-        pending_count * 60  // 简化估算，每任务平均60秒
-    } else {
-        // 没有运行中的任务，可能是Agent离线
-        pending_count * 60
-    };
-
     Ok(Json(ServiceLoadResponse {
         service_id: service.id,
         name: service.name,
@@ -978,7 +966,6 @@ pub async fn get_service_load_handler(
         available_slots,
         pending_tasks: pending_count,
         running_tasks: running_count,
-        estimated_wait_secs,
         last_heartbeat: service.agent_last_heartbeat,
     }))
 }
@@ -1494,7 +1481,6 @@ mod tests {
             available_slots: 3,
             pending_tasks: 10,
             running_tasks: 2,
-            estimated_wait_secs: 0,
             last_heartbeat: Some(now),
         };
         

@@ -460,9 +460,7 @@ async fn test_heartbeat_and_load_query() {
     assert_eq!(json["pending_tasks"].as_i64(), Some(2));
     assert_eq!(json["running_tasks"].as_i64(), Some(1));
 
-    // 验证预估等待时间计算
-    // available_slots > 0，所以 estimated_wait_secs = 0
-    assert_eq!(json["estimated_wait_secs"].as_i64(), Some(0));
+
 }
 
 /// 测试完整工作流：上报负载变化
