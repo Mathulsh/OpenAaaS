@@ -11,6 +11,7 @@ on:
         options:
           - server
           - agent-core
+          - client-app
         default: server
       version:
         description: "发布版本号（SemVer，例如 0.1.1）"
@@ -69,6 +70,8 @@ jobs:
             echo "binary_name=open-aaas-server" >> "$GITHUB_OUTPUT"
           elif [[ "$COMPONENT" == "agent-core" ]]; then
             echo "binary_name=agent-core" >> "$GITHUB_OUTPUT"
+          elif [[ "$COMPONENT" == "client-app" ]]; then
+            echo "binary_name=openaaas-client" >> "$GITHUB_OUTPUT"
           else
             echo "Unknown component: $COMPONENT"
             exit 1
@@ -94,7 +97,10 @@ jobs:
           component = os.environ.get("COMPONENT", "")
           version = os.environ.get("VERSION", "")
 
-          if component not in ("server", "agent-core"):
+          if component == "client-app":
+              print(f"client-app version is managed manually, skipping auto-bump")
+              sys.exit(0)
+          elif component not in ("server", "agent-core"):
               print(f"Invalid component: {component}")
               sys.exit(1)
 
@@ -121,6 +127,10 @@ jobs:
       - name: Sync Cargo.lock
         run: |
           set -euo pipefail
+          if [[ "$COMPONENT" == "client-app" ]]; then
+            echo "client-app version managed manually, skipping Cargo.lock sync"
+            exit 0
+          fi
           if [[ -f "${COMPONENT}/Cargo.lock" ]]; then
             cd "${COMPONENT}"
             cargo check
@@ -130,15 +140,23 @@ jobs:
       - name: Stage changes
         run: |
           set -euo pipefail
-          git add "${COMPONENT}/Cargo.toml"
-          if [[ -f "${COMPONENT}/Cargo.lock" ]]; then
-            git add -f "${COMPONENT}/Cargo.lock"
+          if [[ "$COMPONENT" == "client-app" ]]; then
+            echo "client-app version managed manually, nothing to stage"
+          else
+            git add "${COMPONENT}/Cargo.toml"
+            if [[ -f "${COMPONENT}/Cargo.lock" ]]; then
+              git add -f "${COMPONENT}/Cargo.lock"
+            fi
           fi
 
       # 提交版本号修改（无变更时跳过，避免 commit 失败）
       - name: Commit version bump
         run: |
           set -euo pipefail
+          if [[ "$COMPONENT" == "client-app" ]]; then
+            echo "client-app version managed manually, skipping commit"
+            exit 0
+          fi
           if git diff --cached --quiet; then
             echo "⚠️ Warning: Cargo.toml already at target version, tag will point to current HEAD"
             exit 0
@@ -265,6 +283,17 @@ jobs:
         with:
           ref: ${{ env.TAG }}
 
+      - name: Check platform support
+        id: support
+        shell: bash
+        run: |
+          if [[ "${{ env.COMPONENT }}" == "client-app" && "${{ matrix.runner }}" == "ubuntu-24.04-arm" ]]; then
+            echo "supported=false" >> "$GITHUB_OUTPUT"
+            echo "⏭️ Skipping client-app build on unsupported platform: ${{ matrix.runner }}"
+          else
+            echo "supported=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # 安装 Rust stable 工具链，并安装对应目标平台
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -273,42 +302,75 @@ jobs:
 
       # 为 Linux musl 目标安装 musl-tools（提供 musl-gcc 等工具）
       - name: Install musl tools
-        if: contains(matrix.target, '-linux-musl')
+        if: env.COMPONENT != 'client-app' && contains(matrix.target, '-linux-musl')
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       # 缓存 Rust 构建产物，减少矩阵编译时间
       - name: Cache Rust build
+        if: env.COMPONENT != 'client-app'
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
+
+      - name: Cache Rust build (client-app)
+        if: env.COMPONENT == 'client-app' && steps.support.outputs.supported == 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: tauri-${{ matrix.target }}
+          workspaces: client-app/src-tauri
+
+      - name: Setup Node.js
+        if: env.COMPONENT == 'client-app' && steps.support.outputs.supported == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client-app/package-lock.json
 
       # 先执行测试，阻断有 bug 的版本直接发布。
       # 注意：当前矩阵仅限于原生构建（runner 架构与 target 一一对应）；
       # Linux 使用 musl 目标以生成静态链接二进制，可在任意 Linux 发行版运行。
       # 若未来加入交叉编译目标，此测试步骤需要调整。
       - name: Run tests
+        if: steps.support.outputs.supported == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          cd "${COMPONENT}"
-          if [ "${COMPONENT}" = "agent-core" ]; then
-            cargo test --features test-utils --target ${{ matrix.target }}
+          if [[ "${COMPONENT}" == "client-app" ]]; then
+            cd client-app
+            npm ci
+            npm run build
           else
-            cargo test --target ${{ matrix.target }}
+            cd "${COMPONENT}"
+            if [ "${COMPONENT}" = "agent-core" ]; then
+              cargo test --features test-utils --target ${{ matrix.target }}
+            else
+              cargo test --target ${{ matrix.target }}
+            fi
           fi
 
       # 在对应组件目录下执行 release 构建
       - name: Build release binary
+        if: env.COMPONENT != 'client-app' && steps.support.outputs.supported == 'true'
         shell: bash
         run: |
           set -euo pipefail
           cd "${COMPONENT}"
           cargo build --release --target ${{ matrix.target }}
 
+      - name: Build Tauri app
+        if: env.COMPONENT == 'client-app' && steps.support.outputs.supported == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd client-app
+          npm run tauri:build
+
       # 创建临时目录，复制二进制文件 + README + LICENSE
       # 同时计算出产物包名和扩展名信息
       - name: Prepare staging directory
         id: staging
+        if: steps.support.outputs.supported == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -320,33 +382,52 @@ jobs:
 
           mkdir -p "${PACKAGE_NAME}"
 
-          # Windows 二进制文件带 .exe 后缀
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            BINARY_EXT=".exe"
+          if [[ "${{ env.COMPONENT }}" == "client-app" ]]; then
+            BUNDLE_DIR="client-app/src-tauri/target/release/bundle"
+            if [[ "${{ runner.os }}" == "macOS" ]]; then
+              cp "${BUNDLE_DIR}/dmg/${BINARY_NAME}_${VERSION}_aarch64.dmg" "${PACKAGE_NAME}/" 2>/dev/null || true
+              cp -R "${BUNDLE_DIR}/macos/${BINARY_NAME}.app" "${PACKAGE_NAME}/" 2>/dev/null || true
+              echo "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
+              echo "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+            elif [[ "${{ runner.os }}" == "Windows" ]]; then
+              cp "${BUNDLE_DIR}/msi/${BINARY_NAME}_${VERSION}_x64_en-US.msi" "${PACKAGE_NAME}/" 2>/dev/null || true
+              cp "${BUNDLE_DIR}/nsis/${BINARY_NAME}_${VERSION}_x64-setup.exe" "${PACKAGE_NAME}/" 2>/dev/null || true
+              echo "archive=${PACKAGE_NAME}.zip" >> "$GITHUB_OUTPUT"
+              echo "checksum=${PACKAGE_NAME}.zip.sha256" >> "$GITHUB_OUTPUT"
+            else
+              cp "${BUNDLE_DIR}/deb/${BINARY_NAME}_${VERSION}_amd64.deb" "${PACKAGE_NAME}/" 2>/dev/null || true
+              echo "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
+              echo "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+            fi
           else
-            BINARY_EXT=""
-          fi
+            # Windows 二进制文件带 .exe 后缀
+            if [[ "${{ runner.os }}" == "Windows" ]]; then
+              BINARY_EXT=".exe"
+            else
+              BINARY_EXT=""
+            fi
 
-          # 复制产物
-          cp "${COMPONENT}/target/${{ matrix.target }}/release/${BINARY_NAME}${BINARY_EXT}" "${PACKAGE_NAME}/"
-          cp "${COMPONENT}/README.md" "${PACKAGE_NAME}/"
-          cp LICENSE "${PACKAGE_NAME}/"
+            # 复制产物
+            cp "${COMPONENT}/target/${{ matrix.target }}/release/${BINARY_NAME}${BINARY_EXT}" "${PACKAGE_NAME}/"
+            cp "${COMPONENT}/README.md" "${PACKAGE_NAME}/"
+            cp LICENSE "${PACKAGE_NAME}/"
+
+            # 根据操作系统决定打包格式
+            if [[ "${{ runner.os }}" == "Windows" ]]; then
+              echo "archive=${PACKAGE_NAME}.zip" >> "$GITHUB_OUTPUT"
+              echo "checksum=${PACKAGE_NAME}.zip.sha256" >> "$GITHUB_OUTPUT"
+            else
+              echo "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
+              echo "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+            fi
+          fi
 
           echo "package_name=${PACKAGE_NAME}" >> "$GITHUB_ENV"
           echo "package_name=${PACKAGE_NAME}" >> "$GITHUB_OUTPUT"
 
-          # 根据操作系统决定打包格式
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            echo "archive=${PACKAGE_NAME}.zip" >> "$GITHUB_OUTPUT"
-            echo "checksum=${PACKAGE_NAME}.zip.sha256" >> "$GITHUB_OUTPUT"
-          else
-            echo "archive=${PACKAGE_NAME}.tar.gz" >> "$GITHUB_OUTPUT"
-            echo "checksum=${PACKAGE_NAME}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
-          fi
-
       # Linux / macOS：使用 tar 打包并生成 sha256 校验文件
       - name: Pack artifact (Linux/macOS)
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && steps.support.outputs.supported == 'true'
         run: |
           set -euo pipefail
           tar czf "${{ env.package_name }}.tar.gz" "${{ env.package_name }}"
@@ -355,7 +436,7 @@ jobs:
       # Windows：使用 PowerShell Compress-Archive 打包并生成 sha256 校验文件
       # 输出格式与 Linux/macOS 统一: "<hash>  <filename>"
       - name: Pack artifact (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && steps.support.outputs.supported == 'true'
         shell: pwsh
         run: |
           Compress-Archive -Path "${{ env.package_name }}" -DestinationPath "${{ env.package_name }}.zip"
@@ -365,6 +446,7 @@ jobs:
 
       # 上传构建产物到 artifact storage，供 release job 下载
       - name: Upload artifact
+        if: steps.support.outputs.supported == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.arch }}
