@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-11
+
+### Fixed
+- 修复文件下载后缺少完成反馈的问题（#44）
+- 使用 Tauri dialog + fs 插件让用户选择保存路径，保存完成后显示完整路径的 toast 提示
+
 ## [0.3.2] - 2026-05-11
 
 ### Fixed
