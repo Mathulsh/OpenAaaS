@@ -91,6 +91,20 @@ function handleResubmit() {
   router.push(`/submit/${task.value.serviceId}`)
 }
 
+async function handleResumePolling() {
+  if (!task.value) return
+  try {
+    uiStore.setLoading(true)
+    taskStore.resumePollingForTask(task.value.id)
+    uiStore.addToast('已恢复轮询', 'success')
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    uiStore.addToast(msg, 'error')
+  } finally {
+    uiStore.setLoading(false)
+  }
+}
+
 const renderedResult = computed(() => {
   if (!task.value?.result) return ''
   const html = marked.parse(task.value.result, { async: false }) as string
@@ -220,6 +234,13 @@ watch(() => route.params.id, () => {
         </div>
       </div>
 
+      <!-- Poll Error -->
+      <div v-if="task.pollError" class="mb-6">
+        <div class="bg-danger/5 border border-danger/20 rounded-md p-3 text-sm text-danger">
+          {{ task.pollError }}
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="flex gap-3">
         <button
@@ -228,6 +249,13 @@ watch(() => route.params.id, () => {
           @click="handleCancel"
         >
           取消任务
+        </button>
+        <button
+          v-if="canCancel && task.pollError"
+          class="px-4 py-2 bg-accent text-white rounded-md text-sm font-medium hover:bg-accent-hover transition-colors"
+          @click="handleResumePolling"
+        >
+          恢复轮询
         </button>
         <button
           v-if="isTerminal"

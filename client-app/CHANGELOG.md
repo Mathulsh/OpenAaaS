@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-11
+
+### Fixed
+- 修复长任务轮询因失败阈值过低而永久停止的问题
+
 ## [0.3.0] - 2026-05-11
 
 ### Fixed
