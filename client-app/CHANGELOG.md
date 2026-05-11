@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-11
+
+### Fixed
+- 修复任务返回结果的Markdown渲染问题（表格、标题、换行等格式异常）
+
 ## [0.3.1] - 2026-05-11
 
 ### Fixed
