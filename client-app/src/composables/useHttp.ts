@@ -29,27 +29,27 @@ export async function httpFetchWithRedirect(input: RequestInfo | URL, init?: Req
     workingInit = { ...workingInit, headers: new Headers(workingInit.headers) }
   }
 
-  while (remainingRedirects >= 0) {
+  while (true) {
     try {
       const response = await tauriFetch(currentUrl, { ...workingInit, redirect: 'manual' })
 
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get('Location')
         if (location) {
-          if (remainingRedirects > 0) {
-            currentUrl = new URL(location, currentUrl).toString()
-            remainingRedirects--
-
-            // Strip Authorization on cross-domain redirect
-            if (workingInit?.headers) {
-              const currentHost = new URL(currentUrl).host
-              if (currentHost !== originalHost) {
-                ;(workingInit.headers as Headers).delete('Authorization')
-              }
-            }
-            continue
+          if (remainingRedirects <= 0) {
+            throw new Error('请求被多次重定向，请直接使用 HTTPS URL')
           }
-          throw new Error('请求被多次重定向，请直接使用 HTTPS URL')
+          currentUrl = new URL(location, currentUrl).toString()
+          remainingRedirects--
+
+          // Strip Authorization on cross-domain redirect
+          if (workingInit?.headers) {
+            const currentHost = new URL(currentUrl).host
+            if (currentHost !== originalHost) {
+              ;(workingInit.headers as Headers).delete('Authorization')
+            }
+          }
+          continue
         }
       }
       return response

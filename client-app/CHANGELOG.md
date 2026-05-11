@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - 修复server的反代301时，强制修改请求method引发的请求错误
+- 修复重定向次数的问题
 
 ## [0.2.1] - 2026-05-11
 
