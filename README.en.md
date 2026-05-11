@@ -17,7 +17,7 @@
 
 ---
 
-**Code flows, data stays still — bring AI to the data, instead of handing data over to AI.**
+**Intelligence flows, data stays still — bring AI to the data, instead of handing data over to AI.**
 
 **OpenAaaS is building a new kind of scientific infrastructure: data stays where it was created, and analytical capabilities flow through the network to reach it.**
 
