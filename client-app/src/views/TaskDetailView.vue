@@ -107,7 +107,7 @@ async function handleResumePolling() {
 
 const renderedResult = computed(() => {
   if (!task.value?.result) return ''
-  const html = marked.parse(task.value.result, { async: false }) as string
+  const html = marked.parse(task.value.result, { async: false, breaks: true }) as string
   return DOMPurify.sanitize(html)
 })
 
@@ -195,7 +195,7 @@ watch(() => route.params.id, () => {
       <!-- Result area -->
       <div v-if="task.result != null" class="mb-6">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-text-secondary mb-2">结果</h3>
-        <div class="bg-bg-primary border border-border rounded-md p-4 text-sm leading-relaxed" v-html="renderedResult" />
+        <div class="bg-bg-primary border border-border rounded-md p-4 text-sm leading-relaxed prose max-w-none" v-html="renderedResult" />
       </div>
       <div v-else-if="task.status === 'completed' && task.isFetchingResult" class="mb-6">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-text-secondary mb-2">结果</h3>

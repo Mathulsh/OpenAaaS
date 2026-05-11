@@ -30,7 +30,7 @@ const load = ref<{
 const usage = ref<string | null | undefined>(undefined)
 const usageHtml = computed(() => {
   if (!usage.value) return ''
-  const html = marked.parse(usage.value, { async: false }) as string
+  const html = marked.parse(usage.value, { async: false, breaks: true }) as string
   return DOMPurify.sanitize(html)
 })
 
@@ -141,7 +141,7 @@ watch(() => route.params.id, () => {
 
       <div v-if="usage !== undefined && usage !== null" class="mt-4 p-3 bg-bg-primary border border-border rounded-md">
         <p class="text-sm font-medium mb-1">使用说明</p>
-        <div class="text-sm leading-relaxed prose prose-invert max-w-none" v-html="usageHtml" />
+        <div class="text-sm leading-relaxed prose max-w-none" v-html="usageHtml" />
       </div>
       <div v-else-if="usage === null" class="mt-4 p-3 bg-bg-primary border border-border rounded-md">
         <p class="text-sm font-medium mb-1">使用说明</p>
