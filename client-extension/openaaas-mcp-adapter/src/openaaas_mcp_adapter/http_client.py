@@ -65,9 +65,10 @@ def safe_request(
     data: dict[str, Any] | None = None,
     files: list[tuple[str, tuple[str, bytes, str]]] | None = None,
     timeout: float | None = None,
+    max_redirects: int = 3,
 ) -> Any:
     """
-    发送 HTTP 请求并安全处理响应
+    发送 HTTP 请求并安全处理响应（手动处理 3xx 重定向，保持原 HTTP 方法）
 
     Args:
         method: HTTP 方法 (GET/POST/PUT/DELETE)
@@ -76,6 +77,7 @@ def safe_request(
         data: JSON 请求体（会被序列化为 JSON）
         files: 文件列表，格式 [(field_name, (filename, content, mime_type)), ...]
         timeout: 超时秒数
+        max_redirects: 最大重定向次数
 
     Returns:
         解析后的 JSON 对象
@@ -85,34 +87,54 @@ def safe_request(
     """
     headers = headers or {}
     timeout_val = timeout or DEFAULT_TIMEOUT
+    current_url = url
+    remaining_redirects = max_redirects
+    original_host = httpx.URL(url).host
 
     try:
-        with httpx.Client(timeout=timeout_val, follow_redirects=True) as client:
-            if files is not None:
-                # multipart upload: data for form fields, files for uploads
-                form_data = {k: str(v) for k, v in (data or {}).items()}
-                response = client.request(
-                    method, url, headers=headers, data=form_data, files=files
-                )
-            elif data:
-                if "Content-Type" not in headers:
-                    headers = {**headers, "Content-Type": "application/json"}
-                response = client.request(
-                    method, url, headers=headers, json=data
-                )
-            else:
-                response = client.request(method, url, headers=headers)
+        with httpx.Client(timeout=timeout_val, follow_redirects=False) as client:
+            while remaining_redirects >= 0:
+                req_headers = dict(headers)
+                current_host = httpx.URL(current_url).host
+                if current_host != original_host:
+                    req_headers.pop("Authorization", None)
 
-            response.raise_for_status()
-            if response.status_code == 204 or not response.content:
-                return {}
-            return response.json()
+                if files is not None:
+                    # multipart upload: data for form fields, files for uploads
+                    form_data = {k: str(v) for k, v in (data or {}).items()}
+                    response = client.request(
+                        method, current_url, headers=req_headers, data=form_data, files=files
+                    )
+                elif data:
+                    if "Content-Type" not in req_headers:
+                        req_headers = {**req_headers, "Content-Type": "application/json"}
+                    response = client.request(
+                        method, current_url, headers=req_headers, json=data
+                    )
+                else:
+                    response = client.request(method, current_url, headers=req_headers)
+
+                if 300 <= response.status_code < 400:
+                    location = response.headers.get("Location")
+                    if location:
+                        if remaining_redirects > 0:
+                            current_url = str(httpx.URL(location, base=current_url))
+                            remaining_redirects -= 1
+                            continue
+                        raise OpenAaaSError("请求被多次重定向，请直接使用 HTTPS URL")
+
+                response.raise_for_status()
+                if response.status_code == 204 or not response.content:
+                    return {}
+                return response.json()
 
     except httpx.HTTPStatusError as e:
-        raise _map_exception(e, url)
+        raise _map_exception(e, current_url)
     except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError, httpx.InvalidURL) as e:
-        raise _map_exception(e, url)
+        raise _map_exception(e, current_url)
     except json.JSONDecodeError as e:
         raise OpenAaaSError(f"响应 JSON 解析错误: {e}")
+    except OpenAaaSError:
+        raise
     except Exception as e:
         raise OpenAaaSError(f"请求失败: {e}")

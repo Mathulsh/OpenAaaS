@@ -194,7 +194,8 @@ function combineSignals(signals: AbortSignal[]): AbortSignal {
 async function safeFetch(
   url: string,
   init?: RequestInit,
-  timeoutMs = 30000
+  timeoutMs = 30000,
+  maxRedirects = 3,
 ): Promise<Response> {
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   const userSignal = init?.signal;
@@ -206,22 +207,64 @@ async function safeFetch(
     signal = timeoutSignal;
   }
 
-  try {
-    return await fetch(url, { ...init, signal });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (err instanceof TypeError) {
-      if (msg.includes("Invalid URL")) {
-        throw new Error("服务端地址格式错误: 请检查 server_url 配置");
+  let currentUrl = url;
+  let remainingRedirects = maxRedirects;
+  const originalHost = new URL(url).host;
+
+  while (remainingRedirects >= 0) {
+    try {
+      // Build headers: strip Authorization on cross-domain redirect
+      const headers: Record<string, string> = {};
+      const initHeaders = init?.headers;
+      if (initHeaders) {
+        if (initHeaders instanceof Headers) {
+          initHeaders.forEach((v, k) => { headers[k] = v; });
+        } else if (Array.isArray(initHeaders)) {
+          initHeaders.forEach(([k, v]) => { headers[k] = v; });
+        } else {
+          Object.assign(headers, initHeaders);
+        }
       }
-      throw new Error("连接失败: 无法连接到服务端，请检查 server_url 是否正确");
+      const currentHost = new URL(currentUrl).host;
+      if (currentHost !== originalHost) {
+        delete headers["Authorization"];
+      }
+
+      const response = await fetch(currentUrl, {
+        ...init,
+        signal,
+        redirect: "manual",
+        headers,
+      });
+
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get("Location");
+        if (location) {
+          if (remainingRedirects <= 0) {
+            throw new Error("请求被多次重定向，请直接使用 HTTPS URL");
+          }
+          currentUrl = new URL(location, currentUrl).toString();
+          remainingRedirects--;
+          continue;
+        }
+      }
+      return response;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (err instanceof TypeError) {
+        if (msg.includes("Invalid URL")) {
+          throw new Error("服务端地址格式错误: 请检查 server_url 配置");
+        }
+        throw new Error("连接失败: 无法连接到服务端，请检查 server_url 是否正确");
+      }
+      const NETWORK_ERRORS = ["fetch failed", "ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT", "ECONNRESET", "EPIPE", "EHOSTUNREACH"];
+      if (NETWORK_ERRORS.some(kw => msg.includes(kw))) {
+        throw new Error("连接失败: 无法连接到服务端，请检查 server_url 是否正确");
+      }
+      throw err;
     }
-    const NETWORK_ERRORS = ["fetch failed", "ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT", "ECONNRESET", "EPIPE", "EHOSTUNREACH"];
-    if (NETWORK_ERRORS.some(kw => msg.includes(kw))) {
-      throw new Error("连接失败: 无法连接到服务端，请检查 server_url 是否正确");
-    }
-    throw err;
   }
+
 }
 
 function stringifyValue(val: unknown): string {
