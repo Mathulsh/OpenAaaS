@@ -8,6 +8,8 @@ import Skeleton from '@/components/Skeleton.vue'
 import { useUiStore } from '@/stores/ui'
 import { useServerStore } from '@/stores/server'
 import { httpFetch } from '@/composables/useHttp'
+import { save } from '@tauri-apps/plugin-dialog'
+import { writeFile } from '@tauri-apps/plugin-fs'
 
 const route = useRoute()
 const router = useRouter()
@@ -128,15 +130,28 @@ async function downloadFile(file: TaskFile) {
     })
     if (!res.ok) throw new Error(`下载失败: ${res.status}`)
     const blob = await res.blob()
-    const objectUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = objectUrl
-    a.download = file.filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(objectUrl), 60000)
-    uiStore.addToast('下载开始', 'success')
+
+    try {
+      const safeName = file.filename.replace(/[/\\]/g, '_')
+      const filePath = await save({ defaultPath: safeName })
+      if (!filePath) {
+        uiStore.addToast('已取消保存', 'info')
+        return
+      }
+      const arrayBuffer = await blob.arrayBuffer()
+      await writeFile(filePath, new Uint8Array(arrayBuffer))
+      uiStore.addToast(`文件已保存: ${filePath}`, 'success', 6000)
+    } catch {
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = file.filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000)
+      uiStore.addToast('文件已开始下载，请查看系统下载文件夹', 'info', 5000)
+    }
   } catch (err) {
     uiStore.addToast(err instanceof Error ? err.message : String(err), 'error')
   } finally {

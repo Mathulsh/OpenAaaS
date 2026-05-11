@@ -22,10 +22,10 @@ export const useUiStore = defineStore('ui', () => {
     isLoading.value = loadingCount.value > 0
   }
 
-  function addToast(message: string, type: ToastType = 'info') {
+  function addToast(message: string, type: ToastType = 'info', duration?: number) {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
     toastQueue.value.push({ id, message, type, createdAt: Date.now() })
-    setTimeout(() => removeToast(id), 4000)
+    setTimeout(() => removeToast(id), Math.max(1000, duration ?? 4000))
   }
 
   function removeToast(id: string) {
