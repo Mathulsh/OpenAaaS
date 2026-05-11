@@ -186,6 +186,8 @@ Rust + Docker — 部署在数据本地
   <img alt="OpenAaaS Client" src="https://github.com/user-attachments/assets/8bc81d68-76da-47c6-a535-83227b27b8bd" width="800" />
 </p>
 
+> macOS 用户请注意：应用使用 ad-hoc 自签名，首次打开时前往 **系统设置 → 隐私与安全性 → 安全性** 点击"仍要打开"即可。
+
 ### 用通用 Agent 框架
 
 如果你的 Agent 没有 OpenAaaS 插件，让 Agent 直接访问 <https://api.open-aaas.com>
