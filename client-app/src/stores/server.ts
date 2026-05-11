@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { httpFetch } from '@/composables/useHttp'
+import { httpFetch, httpFetchWithRedirect } from '@/composables/useHttp'
 import { loadState, saveState } from './persist'
 
 export interface Server {
@@ -96,7 +96,7 @@ export const useServerStore = defineStore('server', () => {
     if (!server) throw new Error('服务器不存在')
 
     const url = `${server.serverUrl.replace(/\/$/, '')}/api/v1/client/auth/register`
-    const res = await httpFetch(url, {
+    const res = await httpFetchWithRedirect(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),

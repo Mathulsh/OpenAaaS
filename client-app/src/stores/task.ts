@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { httpFetch, uploadWithFiles } from '@/composables/useHttp'
+import { httpFetch, httpFetchWithRedirect, uploadWithFiles } from '@/composables/useHttp'
 import { loadState, saveState } from './persist'
 
 export interface TaskFile {
@@ -268,7 +268,7 @@ export const useTaskStore = defineStore('task', () => {
 
     const baseUrl = server.serverUrl.replace(/\/$/, '')
     const url = `${baseUrl}/api/v1/client/tasks/${encodeURIComponent(taskId)}/cancel`
-    const res = await httpFetch(url, {
+    const res = await httpFetchWithRedirect(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${server.apiKey}` },
     })
