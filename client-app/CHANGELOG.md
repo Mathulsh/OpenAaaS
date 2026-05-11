@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-05-11
+
+### Fixed
+- 增加MacOS版自签名，防止安装时直接报损坏
+
 ## [0.2.0] - 2026-05-10
 
 ### Added
