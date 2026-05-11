@@ -48,3 +48,11 @@ Release build artifacts are located at `src-tauri/target/release/bundle/`:
 | macOS | `.dmg` installer + `.app` bundle |
 | Windows | `.msi` installer + `.exe` executable |
 | Linux | `.deb` package |
+
+## macOS Installation Note
+
+The app is ad-hoc signed (without an Apple Developer ID). On first launch, macOS may warn **"cannot be opened because the developer cannot be verified."**
+
+To open: Go to **System Settings → Privacy & Security → Security**, then click **"Open Anyway"**.
+
+> 💡 This is preferable to no signing at all, which would show "damaged" and require a terminal command to remove quarantine attributes.

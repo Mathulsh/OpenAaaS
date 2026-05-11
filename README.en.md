@@ -187,6 +187,8 @@ The desktop client is ideal for:
   <img alt="OpenAaaS Client" src="https://github.com/user-attachments/assets/8bc81d68-76da-47c6-a535-83227b27b8bd" width="800" />
 </p>
 
+> macOS users: The app is ad-hoc signed. On first launch, go to **System Settings → Privacy & Security → Security** and click **"Open Anyway"**.
+
 ### Using a General Agent Framework
 
 If your Agent does not have an OpenAaaS plugin, simply have it access <https://api.open-aaas.com>:
