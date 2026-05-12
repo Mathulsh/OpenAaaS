@@ -189,3 +189,49 @@ pub async fn discovery(State(_state): State<AppState>) -> Json<Value> {
         }
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::AppConfig;
+
+    async fn setup_test_state() -> (AppState, tempfile::TempDir) {
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let mut config = AppConfig::default();
+        config.database.url = "sqlite::memory:".to_string();
+        config.task.file_storage_path = temp_dir.path().to_string_lossy().to_string();
+        let _ = tokio::fs::create_dir_all(&config.task.file_storage_path).await;
+        let state = AppState::new(config).await.expect("Failed to create test state");
+        (state, temp_dir)
+    }
+
+    #[tokio::test]
+    async fn test_discovery_returns_expected_api_info() {
+        let (state, _temp_dir) = setup_test_state().await;
+        let Json(value) = discovery(State(state)).await;
+
+        let api = value.get("api").expect("api field missing");
+        assert_eq!(api.get("name").and_then(|v| v.as_str()), Some("OpenAaaS"));
+        assert_eq!(api.get("version").and_then(|v| v.as_str()), Some(env!("CARGO_PKG_VERSION")));
+        assert_eq!(api.get("base_url").and_then(|v| v.as_str()), Some("/api/v1"));
+    }
+
+    #[tokio::test]
+    async fn test_discovery_endpoints_not_empty() {
+        let (state, _temp_dir) = setup_test_state().await;
+        let Json(value) = discovery(State(state)).await;
+
+        let endpoints = value.get("endpoints").expect("endpoints field missing");
+        let endpoints_arr = endpoints.as_array().expect("endpoints should be an array");
+        assert!(!endpoints_arr.is_empty(), "endpoints list should not be empty");
+
+        let names: Vec<&str> = endpoints_arr
+            .iter()
+            .filter_map(|e| e.get("name").and_then(|n| n.as_str()))
+            .collect();
+
+        assert!(names.contains(&"create_task"), "should contain create_task endpoint");
+        assert!(names.contains(&"list_services"), "should contain list_services endpoint");
+        assert!(names.contains(&"register"), "should contain register endpoint");
+    }
+}

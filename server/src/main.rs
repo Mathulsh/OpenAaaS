@@ -20,7 +20,7 @@ use tower_http::{
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
-use open_aaas_server::{config::AppConfig, handlers, state::AppState};
+use open_aaas_server::{config::AppConfig, handlers, main_support::*, state::AppState};
 
 #[derive(Parser)]
 #[command(name = "server")]
@@ -59,14 +59,6 @@ async fn main() -> anyhow::Result<()> {
         Commands::Stop => stop(config_path).await,
         Commands::Status => status(config_path).await,
     }
-}
-
-fn load_config_from_path(path: &PathBuf) -> anyhow::Result<AppConfig> {
-    let config = config::Config::builder()
-        .add_source(config::File::from(path.as_path()).required(false))
-        .add_source(config::Environment::with_prefix("APP").separator("__"))
-        .build()?;
-    Ok(config.try_deserialize()?)
 }
 
 fn prepare_server_config(config_path: &PathBuf) -> anyhow::Result<AppConfig> {
@@ -603,64 +595,6 @@ async fn status(config_path: PathBuf) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn pidfile_path(config: &AppConfig) -> PathBuf {
-    database_dir_from_url(&config.database.url)
-        .unwrap_or_else(|| PathBuf::from("./data"))
-        .join("server.pid")
-}
-
-fn check_running(config: &AppConfig) -> anyhow::Result<Option<u32>> {
-    let pidfile = pidfile_path(config);
-    if !pidfile.exists() {
-        return Ok(None);
-    }
-
-    let pid_str = std::fs::read_to_string(&pidfile)?;
-    let pid = match pid_str.trim().parse::<u32>() {
-        Ok(p) if p > 0 => p,
-        _ => {
-            let _ = std::fs::remove_file(&pidfile);
-            return Ok(None);
-        }
-    };
-
-    #[cfg(unix)]
-    {
-        use std::process::Stdio;
-        let output = std::process::Command::new("kill")
-            .args(&["-0", &pid.to_string()])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .output()?;
-
-        if output.status.success() {
-            return Ok(Some(pid));
-        } else {
-            let _ = std::fs::remove_file(&pidfile);
-            return Ok(None);
-        }
-    }
-
-    #[cfg(not(unix))]
-    {
-        Ok(Some(pid))
-    }
-}
-
-fn write_pidfile(config: &AppConfig) -> anyhow::Result<()> {
-    let pidfile = pidfile_path(config);
-    if let Some(parent) = pidfile.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    let pid = std::process::id();
-    std::fs::write(&pidfile, pid.to_string())?;
-    Ok(())
-}
-
-fn remove_pidfile(config: &AppConfig) {
-    let _ = std::fs::remove_file(pidfile_path(config));
-}
-
 fn runtime_admin_api_key(config: &AppConfig) -> Option<String> {
     std::env::var("ADMIN_API_KEY")
         .ok()
@@ -671,22 +605,6 @@ fn runtime_admin_api_key(config: &AppConfig) -> Option<String> {
                 .clone()
                 .filter(|value| !is_blank(value))
         })
-}
-
-fn apply_server_data_dir(config: &mut AppConfig, data_dir: &str) {
-    let data_path = std::path::PathBuf::from(data_dir);
-    let db_path = data_path.join("app.db");
-    let path_str = db_path.to_str().expect("data dir path should be valid UTF-8").replace('\\', "/");
-    config.database.url = if db_path.is_absolute() {
-        format!("sqlite:///{}", path_str)
-    } else {
-        format!("sqlite:{}", path_str)
-    };
-    config.task.file_storage_path = data_path
-        .join("files")
-        .to_str()
-        .expect("data dir path should be valid UTF-8")
-        .to_string();
 }
 
 fn choose_server_data_dir(interactive: bool, default_dir: &str) -> anyhow::Result<String> {
@@ -726,41 +644,6 @@ fn ensure_server_runtime_dirs(config: &AppConfig) -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-fn database_dir_from_url(url: &str) -> Option<PathBuf> {
-    let path = url.strip_prefix("sqlite:")?;
-    // 处理三斜杠绝对路径格式: sqlite:///C:/path → C:/path
-    let path = path.strip_prefix("///").unwrap_or(path);
-    let path = path.split(&['?', '#']).next().unwrap_or(path);
-    let db_path = PathBuf::from(path);
-    db_path.parent().map(PathBuf::from)
-}
-
-fn secret_needs_generation(value: Option<&str>) -> bool {
-    match value {
-        Some(secret) => {
-            let trimmed = secret.trim();
-            trimmed.is_empty() || trimmed == "change-me-in-production"
-        }
-        None => true,
-    }
-}
-
-fn is_blank(value: &str) -> bool {
-    value.trim().is_empty()
-}
-
-fn is_blank_option(value: Option<&str>) -> bool {
-    value.is_none_or(is_blank)
-}
-
-fn generate_secret() -> String {
-    format!(
-        "{}{}",
-        Uuid::new_v4().simple(),
-        Uuid::new_v4().simple()
-    )
 }
 
 fn prompt_with_default(label: &str, default: &str, help: &str) -> anyhow::Result<String> {
