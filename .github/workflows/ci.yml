@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rust-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci-rust
+      - name: Run server tests
+        run: |
+          cd server
+          cargo test
+      - name: Run agent-core tests
+        run: |
+          cd agent-core
+          cargo test --features test-utils
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client-app/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client-app/src-tauri
+      - name: Run frontend tests
+        run: |
+          cd client-app
+          npm ci
+          npm run test
+      - name: Run Tauri Rust tests
+        run: |
+          cd client-app/src-tauri
+          cargo test
+
+  python-tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # kimi-plugin
+      - name: Test kimi-plugin
+        run: |
+          cd client-extension/kimi-plugin
+          pip install -e ".[dev]"
+          pytest tests/ -v
+
+      # mcp-adapter
+      - name: Test mcp-adapter
+        run: |
+          cd client-extension/openaaas-mcp-adapter
+          pip install -e ".[dev]"
+          pytest tests/ -v
+
+      # dash (仅 Linux)
+      - name: Test dash
+        if: runner.os == 'Linux'
+        run: |
+          cd dash
+          pip install -e ".[dev]"
+          pytest tests/ -v
