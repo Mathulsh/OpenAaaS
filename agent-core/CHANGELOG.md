@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- 优化 `--help` 输出，补充 Agent Core 职责、首次使用流程、默认值和子命令说明。
+
 ## [0.2.1]- 2026-05-07
 
 ### Added

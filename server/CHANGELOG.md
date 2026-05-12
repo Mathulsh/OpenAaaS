@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- 优化 `--help` 输出，补充 Server 职责、常用流程、首次运行默认行为和子命令说明。
+- 修正 `--version` 输出中的命令名称为 `open-aaas-server`。
+
 ## [0.4.1] - 2026-05-10
 
 ### Fixed
