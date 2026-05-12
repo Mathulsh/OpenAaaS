@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-12
+
+### Fixed
+- 修复服务授权状态不刷新的问题（#48）
+- HomeView 添加手动刷新按钮，支持刷新服务列表和授权状态
+- ServiceDetailView 进入页面及路由切换时自动刷新服务列表
+
 ## [0.4.0] - 2026-05-11
 
 ### Fixed

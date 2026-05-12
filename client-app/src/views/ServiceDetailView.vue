@@ -72,12 +72,22 @@ async function fetchServiceData() {
 
 onMounted(() => {
   fetchServiceData()
+
+  const server = serverStore.defaultServer
+  if (server?.apiKey) {
+    serverStore.fetchServices().catch((err) => {
+      console.warn('刷新服务列表失败', err)
+    })
+  }
 })
 
 watch(() => route.params.id, () => {
   load.value = undefined
   usage.value = undefined
   fetchServiceData()
+  serverStore.fetchServices().catch((err) => {
+    console.warn('刷新服务列表失败', err)
+  })
 })
 </script>
 
