@@ -31,5 +31,13 @@ Repository = "https://github.com/Wolido/OpenAaaS"
 Issues = "https://github.com/Wolido/OpenAaaS/issues"
 Documentation = "https://www.open-aaas.com"
 
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+
 [tool.uv]
 package = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

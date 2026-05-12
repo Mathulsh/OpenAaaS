@@ -9,7 +9,7 @@ import pytest
 import responses
 
 from aaas_dashboard.client import OaaSClient, MockOaaSClient, TaskStatus, Task
-from aaas_dashboard.config import Config
+from aaas_dashboard.config import Config, DEFAULT_CONFIG_FILE
 
 
 @pytest.fixture
@@ -105,7 +105,7 @@ def activated_responses():
 
 
 @pytest.fixture(autouse=True)
-def clean_env():
+def clean_env(monkeypatch):
     """Clean environment variables before each test."""
     # Store original values
     env_vars = ["OAAS_SERVER_URL", "OAAS_API_KEY", "OAAS_REFRESH_INTERVAL"]
@@ -115,6 +115,12 @@ def clean_env():
     for var in env_vars:
         if var in os.environ:
             del os.environ[var]
+    
+    # Prevent reading user's actual config file
+    monkeypatch.setattr(
+        "aaas_dashboard.config.DEFAULT_CONFIG_FILE",
+        Path("/nonexistent/aaas-dashboard/config.toml")
+    )
     
     yield
     

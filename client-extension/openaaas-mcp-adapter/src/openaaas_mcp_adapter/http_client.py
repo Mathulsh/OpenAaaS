@@ -118,7 +118,7 @@ def safe_request(
                     location = response.headers.get("Location")
                     if location:
                         if remaining_redirects > 0:
-                            current_url = str(httpx.URL(location, base=current_url))
+                            current_url = str(httpx.URL(current_url).join(location))
                             remaining_redirects -= 1
                             continue
                         raise OpenAaaSError("请求被多次重定向，请直接使用 HTTPS URL")

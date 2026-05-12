@@ -42,6 +42,7 @@ MAX_SINGLE_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 def _sanitize_filename(filename: str, fallback_ext: str = "download") -> str:
     """清理文件名，防止路径遍历"""
     safe = os.path.basename(filename)
+    safe = safe.replace("\x00", "")
     if not safe or safe in (".", "..", "/", "\\"):
         safe = f"result.{fallback_ext}"
     return safe
@@ -157,7 +158,9 @@ def _safe_extract_zip(zip_path: str | Path, extract_dir: str | Path) -> Path:
 
                 extracted_path = extract_dir / info.filename
                 real_extracted_path = extracted_path.resolve()
-                if not str(real_extracted_path).startswith(str(real_extract_dir) + os.sep):
+                try:
+                    real_extracted_path.relative_to(real_extract_dir)
+                except ValueError:
                     raise OpenAaaSError(
                         f"zip 文件包含非法路径: {info.filename}"
                     )
@@ -167,7 +170,9 @@ def _safe_extract_zip(zip_path: str | Path, extract_dir: str | Path) -> Path:
                 # 二次验证（防御 TOCTOU + 符号链接创建后跟随）
                 if extracted_path.exists():
                     real_after = extracted_path.resolve()
-                    if not str(real_after).startswith(str(real_extract_dir) + os.sep):
+                    try:
+                        real_after.relative_to(real_extract_dir)
+                    except ValueError:
                         try:
                             extracted_path.unlink()
                         except IsADirectoryError:
