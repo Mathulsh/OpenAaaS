@@ -4,6 +4,7 @@ import { useUiStore } from '@/stores/ui'
 import { computed, onMounted, ref } from 'vue'
 import type { ServiceItem } from '@/stores/server'
 import { httpFetch } from '@/composables/useHttp'
+import { friendlyErrorMessage } from '@/utils/error'
 import Skeleton from '@/components/Skeleton.vue'
 
 const serverStore = useServerStore()
@@ -31,7 +32,7 @@ async function retryFetch() {
     await serverStore.fetchServices()
     await fetchLoads()
   } catch (err) {
-    fetchError.value = err instanceof Error ? err.message : '获取服务列表失败'
+    fetchError.value = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
   } finally {
     uiStore.setLoading(false)
     isRefreshing.value = false
@@ -55,8 +56,9 @@ async function fetchLoads() {
       } else {
         loads.value[svc.id] = null
       }
-    } catch {
+    } catch (err) {
       loads.value[svc.id] = null
+      uiStore.addToast(friendlyErrorMessage(err instanceof Error ? err.message : String(err)), 'error')
     }
   }))
 }
@@ -69,7 +71,7 @@ onMounted(async () => {
       await serverStore.fetchServices()
       await fetchLoads()
     } catch (err) {
-      fetchError.value = err instanceof Error ? err.message : '获取服务列表失败'
+      fetchError.value = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
     } finally {
       uiStore.setLoading(false)
     }

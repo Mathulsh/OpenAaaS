@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useServerStore } from '@/stores/server'
 import { useTaskStore } from '@/stores/task'
 import { useUiStore } from '@/stores/ui'
+import { friendlyErrorMessage } from '@/utils/error'
 
 const route = useRoute()
 const router = useRouter()
@@ -59,7 +60,7 @@ async function submit() {
     uiStore.addToast('任务提交成功', 'success')
     router.push(`/task/${taskId}`)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
+    const msg = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
     uiStore.addToast(msg, 'error')
   } finally {
     uiStore.setLoading(false)
@@ -90,7 +91,7 @@ onMounted(async () => {
         serviceLoadError.value = '未找到该服务，可能已被删除或您没有访问权限'
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
+      const msg = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
       serviceLoadError.value = msg
     } finally {
       isLoadingService.value = false

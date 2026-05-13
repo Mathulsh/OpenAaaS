@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useServerStore } from '@/stores/server'
 import { useUiStore } from '@/stores/ui'
+import { friendlyErrorMessage } from '@/utils/error'
 
 const serverStore = useServerStore()
 const uiStore = useUiStore()
@@ -42,7 +43,7 @@ function addServer() {
     newUrl.value = ''
     showAddForm.value = false
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
+    const msg = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
     uiStore.addToast(msg, 'error')
   }
 }
@@ -59,7 +60,7 @@ async function doRegister() {
     showRegisterForm.value = false
     registerName.value = ''
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
+    const msg = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
     uiStore.addToast(msg, 'error')
   } finally {
     uiStore.setLoading(false)

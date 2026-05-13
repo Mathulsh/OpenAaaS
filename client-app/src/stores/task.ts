@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { httpFetch, httpFetchWithRedirect, uploadWithFiles } from '@/composables/useHttp'
+import { httpFetch, httpFetchWithRedirect, parseServerError, uploadWithFiles } from '@/composables/useHttp'
+import { friendlyErrorMessage } from '@/utils/error'
 import { loadState, saveState } from './persist'
 
 export interface TaskFile {
@@ -123,8 +124,8 @@ export const useTaskStore = defineStore('task', () => {
       )
 
       if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`提交任务失败: ${res.status} ${body}`)
+        const message = await parseServerError(res)
+        throw new Error(`提交任务失败: ${res.status} ${message}`)
       }
 
       const data = await res.json()
@@ -154,7 +155,8 @@ export const useTaskStore = defineStore('task', () => {
 
       return taskId
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const raw = err instanceof Error ? err.message : String(err)
+      const message = friendlyErrorMessage(raw)
       submitError.value = message
       throw err
     } finally {
@@ -184,7 +186,10 @@ export const useTaskStore = defineStore('task', () => {
         headers: { Authorization: `Bearer ${server.apiKey}` },
       })
 
-      if (!res.ok) throw new Error(`查询失败: ${res.status}`)
+      if (!res.ok) {
+        const message = await parseServerError(res)
+        throw new Error(`查询失败: ${res.status} ${message}`)
+      }
 
       const data = await res.json()
       const newStatus: TaskStatus = data.status || task.status
@@ -242,7 +247,10 @@ export const useTaskStore = defineStore('task', () => {
       updateTask(taskId, { pollFailCount: failCount })
       if (failCount >= MAX_POLL_FAIL) {
         stopPolling(taskId)
-        updateTask(taskId, { pollError: '轮询失败次数过多，已停止' })
+        const raw = err instanceof Error ? err.message : String(err)
+        const friendly = friendlyErrorMessage(raw)
+        const pollMsg = `轮询失败次数过多，已停止。原因：${friendly}`
+        updateTask(taskId, { pollError: pollMsg })
       } else {
         const delay = Math.min(POLL_INTERVAL_MS * 2 ** (failCount - 1), 300000)
         const timer = window.setTimeout(() => doPoll(taskId, false), delay)
@@ -285,8 +293,8 @@ export const useTaskStore = defineStore('task', () => {
     })
 
     if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`取消任务失败: ${res.status} ${body}`)
+      const message = await parseServerError(res)
+      throw new Error(`取消任务失败: ${res.status} ${message}`)
     }
 
     const data = await res.json()
@@ -313,7 +321,10 @@ export const useTaskStore = defineStore('task', () => {
         headers: { Authorization: `Bearer ${server.apiKey}` },
       })
 
-      if (!res.ok) throw new Error(`获取文件列表失败: ${res.status}`)
+      if (!res.ok) {
+        const message = await parseServerError(res)
+        throw new Error(`获取文件列表失败: ${res.status} ${message}`)
+      }
 
       const data = await res.json()
       const files: TaskFile[] = (data.files || []).map((f: Record<string, unknown>) => ({
@@ -339,7 +350,8 @@ export const useTaskStore = defineStore('task', () => {
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const raw = err instanceof Error ? err.message : String(err)
+      const message = friendlyErrorMessage(raw)
       updateTask(taskId, { resultFetched: true, fetchError: message })
     } finally {
       updateTask(taskId, { isFetchingResult: false })
