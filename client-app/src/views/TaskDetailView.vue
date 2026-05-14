@@ -7,6 +7,7 @@ import { useTaskStore, type TaskFile } from '@/stores/task'
 import Skeleton from '@/components/Skeleton.vue'
 import { useUiStore } from '@/stores/ui'
 import { useServerStore } from '@/stores/server'
+import { friendlyErrorMessage } from '@/utils/error'
 import { httpFetch } from '@/composables/useHttp'
 import { save } from '@tauri-apps/plugin-dialog'
 import { writeFile } from '@tauri-apps/plugin-fs'
@@ -81,7 +82,7 @@ async function handleCancel() {
     await taskStore.cancelTask(task.value.id)
     uiStore.addToast('任务已取消', 'success')
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
+    const msg = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
     uiStore.addToast(msg, 'error')
   } finally {
     uiStore.setLoading(false)
@@ -100,7 +101,7 @@ async function handleResumePolling() {
     taskStore.resumePollingForTask(task.value.id)
     uiStore.addToast('已恢复轮询', 'success')
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
+    const msg = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
     uiStore.addToast(msg, 'error')
   } finally {
     uiStore.setLoading(false)
@@ -153,7 +154,7 @@ async function downloadFile(file: TaskFile) {
       uiStore.addToast('文件已开始下载，请查看系统下载文件夹', 'info', 5000)
     }
   } catch (err) {
-    uiStore.addToast(err instanceof Error ? err.message : String(err), 'error')
+    uiStore.addToast(err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err)), 'error')
   } finally {
     uiStore.setLoading(false)
   }

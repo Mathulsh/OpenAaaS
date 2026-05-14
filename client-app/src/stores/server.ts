@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { httpFetch, httpFetchWithRedirect } from '@/composables/useHttp'
+import { httpFetch, httpFetchWithRedirect, parseServerError } from '@/composables/useHttp'
+import { friendlyErrorMessage } from '@/utils/error'
 import { loadState, saveState } from './persist'
 
 export interface Server {
@@ -103,8 +104,8 @@ export const useServerStore = defineStore('server', () => {
     })
 
     if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`注册失败: ${res.status} ${body}`)
+      const message = await parseServerError(res)
+      throw new Error(`注册失败: ${res.status} ${message}`)
     }
 
     const data = await res.json()
@@ -139,8 +140,8 @@ export const useServerStore = defineStore('server', () => {
       })
 
       if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`获取服务列表失败: ${res.status} ${body}`)
+        const message = await parseServerError(res)
+        throw new Error(`获取服务列表失败: ${res.status} ${message}`)
       }
 
       const data = await res.json()
@@ -164,7 +165,8 @@ export const useServerStore = defineStore('server', () => {
 
       return items
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const raw = err instanceof Error ? err.message : String(err)
+      const message = friendlyErrorMessage(raw)
       fetchError.value = message
       throw err
     } finally {

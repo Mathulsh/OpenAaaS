@@ -14,6 +14,7 @@ vi.mock('@/stores/persist', () => ({
 vi.mock('@/composables/useHttp', () => ({
   httpFetch: vi.fn(),
   httpFetchWithRedirect: vi.fn(),
+  parseServerError: vi.fn(),
 }))
 
 import { httpFetch, httpFetchWithRedirect } from '@/composables/useHttp'

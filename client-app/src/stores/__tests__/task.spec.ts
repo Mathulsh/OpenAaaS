@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useTaskStore, type Task, type TaskStatus } from '../task'
+import { useTaskStore, type Task } from '../task'
 
 vi.mock('@/stores/persist', () => ({
   loadState: vi.fn(() => ({
@@ -14,6 +14,7 @@ vi.mock('@/composables/useHttp', () => ({
   httpFetch: vi.fn(),
   httpFetchWithRedirect: vi.fn(),
   uploadWithFiles: vi.fn(),
+  parseServerError: vi.fn(),
 }))
 
 import { httpFetch, httpFetchWithRedirect, uploadWithFiles } from '@/composables/useHttp'

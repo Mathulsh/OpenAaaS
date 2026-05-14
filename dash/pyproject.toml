@@ -1,6 +1,6 @@
 [project]
 name = "open-aaas-dashboard"
-version = "0.5.0"
+version = "0.5.1"
 description = "OpenAaaS Dashboard - A Streamlit-based web UI for monitoring tasks"
 readme = "README.md"
 requires-python = ">=3.10"

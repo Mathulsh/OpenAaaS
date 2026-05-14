@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-05-13
+
+### Fixed
+- 修复 client-app 错误提示过于技术化的问题（issue #43）
+- 在 HTTP 层正确解析服务端 JSON 错误体
+- 新增 friendlyErrorMessage 将常见错误映射为用户友好文案
+- 覆盖附件过大等场景
+
 ## [0.5.0] - 2026-05-12
 
 ### Fixed

@@ -114,3 +114,18 @@ export async function uploadWithFiles(
     body,
   })
 }
+
+/**
+ * 解析服务端返回的结构化错误 JSON，提取可读 message。
+ * 如果 JSON 解析失败，回退到 res.statusText。
+ */
+export async function parseServerError(res: Response): Promise<string> {
+  try {
+    const body = await res.json() as { error?: string; message?: string }
+    if (body.message) return body.message
+    if (body.error) return body.error
+  } catch {
+    // JSON 解析失败，回退到 statusText
+  }
+  return res.statusText || `HTTP ${res.status}`
+}
