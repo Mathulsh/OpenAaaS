@@ -12,7 +12,10 @@ from io import StringIO, BytesIO
 import urllib.error
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 添加当前目录到路径以导入 helpers
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import register
+from helpers import create_mock_response, create_mock_http_error
 
 
 class TestLoadConfig(unittest.TestCase):
@@ -30,7 +33,7 @@ class TestLoadConfig(unittest.TestCase):
         """测试配置文件不存在时使用默认值"""
         with patch("os.path.join", return_value="/fake/config.json"):
             config = register.load_config()
-        self.assertEqual(config["server_url"], "http://localhost:8080")
+        self.assertEqual(config["server_url"], "https://api.open-aaas.com")
 
 
 class TestSaveConfig(unittest.TestCase):
@@ -78,22 +81,21 @@ class TestRegister(unittest.TestCase):
 
     @patch("register.save_config")
     @patch("register.load_config")
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_register_success(self, mock_urlopen, mock_load_config, mock_save_config):
         """测试正常注册成功"""
         # 注意：装饰器从内到外应用，参数顺序从外到内
-        # mock_urlopen 对应 urllib.request.urlopen (最内层)
+        # mock_urlopen 对应 utils._no_redirect_opener.open (最内层)
         # mock_load_config 对应 register.load_config (中间层)
         # mock_save_config 对应 register.save_config (最外层)
         mock_load_config.return_value = {"server_url": "http://localhost:8080"}
         mock_save_config.return_value = True
         
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({
+        mock_response = create_mock_response(200, json_data={
             "api_key": "test-api-key-123",
             "client_id": "client-456",
             "name": "test-client"
-        }).encode("utf-8")
+        })
         mock_urlopen.return_value.__enter__.return_value = mock_response
         
         result = register.register("http://localhost:8080", "test-client")
@@ -107,18 +109,17 @@ class TestRegister(unittest.TestCase):
     
     @patch("register.save_config")
     @patch("register.load_config")
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_register_success_token_field(self, mock_urlopen, mock_load_config, mock_save_config):
         """测试注册成功但使用 token 字段而非 api_key"""
         # 注意：装饰器从内到外应用，参数顺序从外到内
         mock_load_config.return_value = {"server_url": "http://localhost:8080"}
         mock_save_config.return_value = True
         
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({
+        mock_response = create_mock_response(200, json_data={
             "token": "test-token-789",
             "id": "client-999"
-        }).encode("utf-8")
+        })
         mock_urlopen.return_value.__enter__.return_value = mock_response
         
         result = register.register("http://localhost:8080", "test-client")
@@ -128,16 +129,15 @@ class TestRegister(unittest.TestCase):
     
     @patch("register.save_config")
     @patch("register.load_config")
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_register_no_api_key(self, mock_urlopen, mock_load_config, mock_save_config):
         """测试注册成功但没有返回 api_key"""
         # 注意：装饰器从内到外应用，参数顺序从外到内
         mock_load_config.return_value = {"server_url": "http://localhost:8080"}
         
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({
+        mock_response = create_mock_response(200, json_data={
             "client_id": "client-456"
-        }).encode("utf-8")
+        })
         mock_urlopen.return_value.__enter__.return_value = mock_response
         
         result = register.register("http://localhost:8080", "test-client")
@@ -147,22 +147,14 @@ class TestRegister(unittest.TestCase):
         mock_save_config.assert_not_called()
     
     @patch("register.load_config")
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_register_username_exists(self, mock_urlopen, mock_load_config):
         """测试用户名已存在（409 错误）"""
         mock_load_config.return_value = {
             "servers": {"default": {"server_url": "http://localhost:8080", "api_key": ""}},
             "default_server": "default"
         }
-        error_body = b'{"error": "Client name already exists"}'
-        error = urllib.error.HTTPError(
-            url="http://localhost:8080/api/v1/client/auth/register",
-            code=409,
-            msg="Conflict",
-            hdrs={},
-            fp=BytesIO(error_body)
-        )
-        mock_urlopen.side_effect = error
+        mock_urlopen.side_effect = create_mock_http_error(409, '{"error": "Client name already exists"}')
         
         result = register.register("http://localhost:8080", "existing-client")
         
@@ -170,22 +162,14 @@ class TestRegister(unittest.TestCase):
         self.assertIn("409", result["error"])
     
     @patch("register.load_config")
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_register_http_error_with_json(self, mock_urlopen, mock_load_config):
         """测试 HTTP 错误返回 JSON 错误信息"""
         mock_load_config.return_value = {
             "servers": {"default": {"server_url": "http://localhost:8080", "api_key": ""}},
             "default_server": "default"
         }
-        error_body = b'{"message": "Invalid request data"}'
-        error = urllib.error.HTTPError(
-            url="http://localhost:8080/api/v1/client/auth/register",
-            code=400,
-            msg="Bad Request",
-            hdrs={},
-            fp=BytesIO(error_body)
-        )
-        mock_urlopen.side_effect = error
+        mock_urlopen.side_effect = create_mock_http_error(400, '{"message": "Invalid request data"}')
         
         result = register.register("http://localhost:8080", "test-client")
         
@@ -193,22 +177,14 @@ class TestRegister(unittest.TestCase):
         self.assertIn("Invalid request data", result["error"])
     
     @patch("register.load_config")
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_register_http_error_plain_text(self, mock_urlopen, mock_load_config):
         """测试 HTTP 错误返回纯文本错误信息"""
         mock_load_config.return_value = {
             "servers": {"default": {"server_url": "http://localhost:8080", "api_key": ""}},
             "default_server": "default"
         }
-        error_body = b'Server Error'
-        error = urllib.error.HTTPError(
-            url="http://localhost:8080/api/v1/client/auth/register",
-            code=500,
-            msg="Internal Server Error",
-            hdrs={},
-            fp=BytesIO(error_body)
-        )
-        mock_urlopen.side_effect = error
+        mock_urlopen.side_effect = create_mock_http_error(500, "Server Error")
         
         result = register.register("http://localhost:8080", "test-client")
         
@@ -216,7 +192,7 @@ class TestRegister(unittest.TestCase):
         self.assertIn("Server Error", result["error"])
     
     @patch("register.load_config")
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_register_network_error(self, mock_urlopen, mock_load_config):
         """测试网络错误"""
         mock_load_config.return_value = {
@@ -239,15 +215,14 @@ class TestRegister(unittest.TestCase):
         self.assertIn("缺少必填参数", result["error"])
     
     @patch("register.load_config")
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_register_json_parse_error(self, mock_urlopen, mock_load_config):
         """测试 JSON 解析错误"""
         mock_load_config.return_value = {
             "servers": {"default": {"server_url": "http://localhost:8080", "api_key": ""}},
             "default_server": "default"
         }
-        mock_response = MagicMock()
-        mock_response.read.return_value = b"invalid json"
+        mock_response = create_mock_response(200, text_data="invalid json")
         mock_urlopen.return_value.__enter__.return_value = mock_response
         
         result = register.register("http://localhost:8080", "test-client")

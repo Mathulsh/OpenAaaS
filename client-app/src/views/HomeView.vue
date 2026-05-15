@@ -4,6 +4,7 @@ import { useUiStore } from '@/stores/ui'
 import { computed, onMounted, ref } from 'vue'
 import type { ServiceItem } from '@/stores/server'
 import { httpFetch } from '@/composables/useHttp'
+import { friendlyErrorMessage } from '@/utils/error'
 import Skeleton from '@/components/Skeleton.vue'
 
 const serverStore = useServerStore()
@@ -19,18 +20,22 @@ const loads = ref<Record<string, {
   running_tasks?: number
 } | null>>({})
 const fetchError = ref<string | null>(null)
+const isRefreshing = ref(false)
 
 async function retryFetch() {
+  if (isRefreshing.value) return
   if (!hasServers.value || !serverStore.defaultServer) return
   try {
+    isRefreshing.value = true
     uiStore.setLoading(true)
     fetchError.value = null
     await serverStore.fetchServices()
     await fetchLoads()
   } catch (err) {
-    fetchError.value = err instanceof Error ? err.message : '获取服务列表失败'
+    fetchError.value = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
   } finally {
     uiStore.setLoading(false)
+    isRefreshing.value = false
   }
 }
 
@@ -51,8 +56,9 @@ async function fetchLoads() {
       } else {
         loads.value[svc.id] = null
       }
-    } catch {
+    } catch (err) {
       loads.value[svc.id] = null
+      uiStore.addToast(friendlyErrorMessage(err instanceof Error ? err.message : String(err)), 'error')
     }
   }))
 }
@@ -65,7 +71,7 @@ onMounted(async () => {
       await serverStore.fetchServices()
       await fetchLoads()
     } catch (err) {
-      fetchError.value = err instanceof Error ? err.message : '获取服务列表失败'
+      fetchError.value = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
     } finally {
       uiStore.setLoading(false)
     }
@@ -77,6 +83,17 @@ onMounted(async () => {
   <div class="max-w-5xl mx-auto">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold">服务市场</h1>
+      <button
+        class="p-1 text-text-secondary hover:text-text-primary transition-colors"
+        :class="{ 'animate-spin': isRefreshing }"
+        title="刷新"
+        aria-label="刷新服务列表"
+        @click="retryFetch"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
     </div>
 
     <!-- Empty state: no servers -->

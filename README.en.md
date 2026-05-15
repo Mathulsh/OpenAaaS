@@ -8,6 +8,7 @@
 
 <p align="center">
   <a href="https://www.open-aaas.com">Website</a> ·
+  <a href="https://arxiv.org/abs/2605.13618">Paper</a> ·
   <a href="./server/README.md">Server Docs</a> ·
   <a href="./agent-core/README.md">Agent Core Docs</a> ·
   <a href="#Usage">Usage Guide</a> ·
@@ -30,6 +31,14 @@ At the same time, we strive to minimize the barrier to using the network, even f
 | Demo Video | Screenshots |
 |:---:|:---:|
 | <video src="https://github.com/user-attachments/assets/5bee5e09-2866-4285-b00e-15210f274177"></video> | **Connect Service**<br><img width="372" height="113" alt="Screenshot 2026-05-07 09 36 25" src="https://github.com/user-attachments/assets/d3773d67-9d47-45db-9f5e-3ca96f990981" /><br>**View Service List**<br><img width="379" height="406" alt="Screenshot 2026-05-07 09 37 22" src="https://github.com/user-attachments/assets/d74571ac-b300-411e-9371-b51822531926" /><br>**Service Result Returned**<br><img width="371" height="391" alt="Screenshot 2026-05-07 09 38 09" src="https://github.com/user-attachments/assets/16c9984b-e730-476c-93e7-1aae78f76a5d" /> |
+
+---
+
+### 📄 Paper
+
+Technical design and implementation details: [arXiv:2605.13618](https://arxiv.org/abs/2605.13618)
+
+---
 
 ## Four Core Propositions
 
@@ -146,6 +155,8 @@ Just say in the conversation:
 > "Help me set the OpenAaaS server address to <https://api.open-aaas.com>, then submit a data analysis task"
 
 The client Agent will automatically complete registration, service discovery, task submission, and result retrieval.
+
+<video src="https://github.com/user-attachments/assets/4e2873ee-1581-46c7-b8f2-cfcd6da097ef" controls></video>
 
 ### Using an MCP Client
 

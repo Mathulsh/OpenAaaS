@@ -13,7 +13,10 @@ import urllib.error
 
 # 添加父目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 添加当前目录到路径以导入 helpers
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import discover
+from helpers import create_mock_response, create_mock_http_error
 
 
 class TestLoadConfig(unittest.TestCase):
@@ -38,20 +41,19 @@ class TestLoadConfig(unittest.TestCase):
         # mock_file 对应 builtins.open (外层)
         mock_join.return_value = "/fake/config.json"
         config = discover.load_config()
-        self.assertEqual(config["server_url"], "http://localhost:8080")
+        self.assertEqual(config["server_url"], "https://api.open-aaas.com")
 
 
 class TestDiscover(unittest.TestCase):
     """测试 discover 函数"""
     
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_discover_success(self, mock_urlopen):
         """测试正常发现成功"""
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({
+        mock_response = create_mock_response(200, json_data={
             "version": "1.0.0",
             "endpoints": ["/api/v1/discovery"]
-        }).encode("utf-8")
+        })
         mock_urlopen.return_value.__enter__.return_value = mock_response
         
         result = discover.discover("http://localhost:8080")
@@ -61,34 +63,33 @@ class TestDiscover(unittest.TestCase):
         self.assertEqual(result["data"]["version"], "1.0.0")
         self.assertIn("1.0.0", result["content"])
     
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_discover_no_version(self, mock_urlopen):
         """测试返回结果中没有 version 字段"""
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({
+        mock_response = create_mock_response(200, json_data={
             "endpoints": ["/api/v1/discovery"]
-        }).encode("utf-8")
+        })
         mock_urlopen.return_value.__enter__.return_value = mock_response
         
         result = discover.discover("http://localhost:8080")
         
         self.assertIn("unknown", result["content"])
     
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_discover_url_trailing_slash(self, mock_urlopen):
         """测试 URL 末尾带斜杠的处理"""
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({"version": "1.0.0"}).encode("utf-8")
+        mock_response = create_mock_response(200, json_data={"version": "1.0.0"})
         mock_urlopen.return_value.__enter__.return_value = mock_response
         
         result = discover.discover("http://localhost:8080/")
         
-        # 验证调用时 URL 正确处理
+        # 验证尾斜杠被正确移除，请求发送到正确的 URL
         call_args = mock_urlopen.call_args
-        request = call_args[0][0]
-        self.assertEqual(request.full_url, "http://localhost:8080/api/v1/discovery")
+        req = call_args[0][0]  # 第一个位置参数是 Request 对象
+        self.assertEqual(req.full_url, "http://localhost:8080/api/v1/discovery")
+        self.assertIn("content", result)
     
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_discover_connection_refused(self, mock_urlopen):
         """测试连接失败处理"""
         mock_urlopen.side_effect = urllib.error.URLError("Connection refused")
@@ -99,62 +100,40 @@ class TestDiscover(unittest.TestCase):
         self.assertIn("连接失败", result["error"])
         self.assertIn("Connection refused", result["error"])
     
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_discover_http_403(self, mock_urlopen):
         """测试 HTTP 403 错误处理"""
-        error = urllib.error.HTTPError(
-            url="http://localhost:8080/api/v1/discovery",
-            code=403,
-            msg="Forbidden",
-            hdrs={},
-            fp=None
-        )
-        mock_urlopen.side_effect = error
+        mock_urlopen.side_effect = create_mock_http_error(403, "Forbidden")
         
         result = discover.discover("http://localhost:8080")
         
         self.assertIn("error", result)
         self.assertIn("权限不足 (403)", result["error"])
     
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_discover_http_404(self, mock_urlopen):
         """测试 HTTP 404 错误处理"""
-        error = urllib.error.HTTPError(
-            url="http://localhost:8080/api/v1/discovery",
-            code=404,
-            msg="Not Found",
-            hdrs={},
-            fp=None
-        )
-        mock_urlopen.side_effect = error
+        mock_urlopen.side_effect = create_mock_http_error(404, "Not Found")
         
         result = discover.discover("http://localhost:8080")
         
         self.assertIn("error", result)
         self.assertIn("HTTP 错误 404", result["error"])
     
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_discover_http_500(self, mock_urlopen):
         """测试 HTTP 500 错误处理"""
-        error = urllib.error.HTTPError(
-            url="http://localhost:8080/api/v1/discovery",
-            code=500,
-            msg="Internal Server Error",
-            hdrs={},
-            fp=None
-        )
-        mock_urlopen.side_effect = error
+        mock_urlopen.side_effect = create_mock_http_error(500, "Internal Server Error")
         
         result = discover.discover("http://localhost:8080")
         
         self.assertIn("error", result)
         self.assertIn("HTTP 错误 500", result["error"])
     
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_discover_json_parse_error(self, mock_urlopen):
         """测试 JSON 解析错误处理"""
-        mock_response = MagicMock()
-        mock_response.read.return_value = b"invalid json {"
+        mock_response = create_mock_response(200, text_data="invalid json {")
         mock_urlopen.return_value.__enter__.return_value = mock_response
         
         result = discover.discover("http://localhost:8080")
@@ -162,7 +141,7 @@ class TestDiscover(unittest.TestCase):
         self.assertIn("error", result)
         self.assertIn("JSON 解析错误", result["error"])
     
-    @patch("urllib.request.urlopen")
+    @patch("utils._no_redirect_opener.open")
     def test_discover_timeout(self, mock_urlopen):
         """测试超时错误处理"""
         mock_urlopen.side_effect = TimeoutError("Request timed out")

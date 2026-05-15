@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { httpFetch, uploadWithFiles } from '@/composables/useHttp'
+import { httpFetch, httpFetchWithRedirect, parseServerError, uploadWithFiles } from '@/composables/useHttp'
+import { friendlyErrorMessage } from '@/utils/error'
 import { loadState, saveState } from './persist'
 
 export interface TaskFile {
@@ -35,11 +36,12 @@ export interface Task {
   resultFetched?: boolean
   fetchError?: string
   isFetchingResult?: boolean
+  pollError?: string
 }
 
 const FIRST_POLL_MS = 5000
 const POLL_INTERVAL_MS = 30000
-const MAX_POLL_FAIL = 3
+const MAX_POLL_FAIL = 20
 
 function isActiveStatus(status: TaskStatus): boolean {
   return ['pending', 'running', 'cancelling'].includes(status)
@@ -122,8 +124,8 @@ export const useTaskStore = defineStore('task', () => {
       )
 
       if (!res.ok) {
-        const body = await res.text()
-        throw new Error(`提交任务失败: ${res.status} ${body}`)
+        const message = await parseServerError(res)
+        throw new Error(`提交任务失败: ${res.status} ${message}`)
       }
 
       const data = await res.json()
@@ -153,7 +155,8 @@ export const useTaskStore = defineStore('task', () => {
 
       return taskId
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const raw = err instanceof Error ? err.message : String(err)
+      const message = friendlyErrorMessage(raw)
       submitError.value = message
       throw err
     } finally {
@@ -176,13 +179,17 @@ export const useTaskStore = defineStore('task', () => {
     }
 
     try {
+      if (!task.isPolling) return
       const baseUrl = server.serverUrl.replace(/\/$/, '')
       const url = `${baseUrl}/api/v1/client/tasks/${encodeURIComponent(taskId)}`
       const res = await httpFetch(url, {
         headers: { Authorization: `Bearer ${server.apiKey}` },
       })
 
-      if (!res.ok) throw new Error(`查询失败: ${res.status}`)
+      if (!res.ok) {
+        const message = await parseServerError(res)
+        throw new Error(`查询失败: ${res.status} ${message}`)
+      }
 
       const data = await res.json()
       const newStatus: TaskStatus = data.status || task.status
@@ -190,6 +197,7 @@ export const useTaskStore = defineStore('task', () => {
       const patch: Partial<Task> = {
         status: newStatus,
         pollFailCount: 0,
+        pollError: undefined,
         isPolling: !isTerminalStatus(newStatus),
       }
       if (data.started_at) patch.startedAt = data.started_at
@@ -220,7 +228,11 @@ export const useTaskStore = defineStore('task', () => {
       if (isTerminalStatus(newStatus)) {
         stopPolling(taskId)
         if (newStatus === 'completed') {
-          await fetchResult(taskId)
+          try {
+            await fetchResult(taskId)
+          } catch {
+            // fetchResult 内部已处理错误，此处静默忽略
+          }
         }
       } else {
         const delay = isFirst ? FIRST_POLL_MS : POLL_INTERVAL_MS
@@ -228,13 +240,20 @@ export const useTaskStore = defineStore('task', () => {
         pollTimers.set(taskId, timer)
       }
     } catch (err) {
-      const failCount = (task.pollFailCount || 0) + 1
+      const currentTask = getTask(taskId)
+      if (!currentTask) return
+      if (isTerminalStatus(currentTask.status) || !currentTask.isPolling) return
+      const failCount = (currentTask.pollFailCount || 0) + 1
       updateTask(taskId, { pollFailCount: failCount })
       if (failCount >= MAX_POLL_FAIL) {
         stopPolling(taskId)
-        updateTask(taskId, { isPolling: false, errorMessage: '轮询失败次数过多，已停止' })
+        const raw = err instanceof Error ? err.message : String(err)
+        const friendly = friendlyErrorMessage(raw)
+        const pollMsg = `轮询失败次数过多，已停止。原因：${friendly}`
+        updateTask(taskId, { pollError: pollMsg })
       } else {
-        const timer = window.setTimeout(() => doPoll(taskId, false), POLL_INTERVAL_MS)
+        const delay = Math.min(POLL_INTERVAL_MS * 2 ** (failCount - 1), 300000)
+        const timer = window.setTimeout(() => doPoll(taskId, false), delay)
         pollTimers.set(taskId, timer)
       }
     }
@@ -242,7 +261,7 @@ export const useTaskStore = defineStore('task', () => {
 
   function startPolling(taskId: string) {
     stopPolling(taskId)
-    updateTask(taskId, { isPolling: true })
+    updateTask(taskId, { isPolling: true, pollFailCount: 0, pollError: undefined })
     const timer = window.setTimeout(() => doPoll(taskId, true), FIRST_POLL_MS)
     pollTimers.set(taskId, timer)
   }
@@ -268,14 +287,14 @@ export const useTaskStore = defineStore('task', () => {
 
     const baseUrl = server.serverUrl.replace(/\/$/, '')
     const url = `${baseUrl}/api/v1/client/tasks/${encodeURIComponent(taskId)}/cancel`
-    const res = await httpFetch(url, {
+    const res = await httpFetchWithRedirect(url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${server.apiKey}` },
     })
 
     if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`取消任务失败: ${res.status} ${body}`)
+      const message = await parseServerError(res)
+      throw new Error(`取消任务失败: ${res.status} ${message}`)
     }
 
     const data = await res.json()
@@ -302,7 +321,10 @@ export const useTaskStore = defineStore('task', () => {
         headers: { Authorization: `Bearer ${server.apiKey}` },
       })
 
-      if (!res.ok) throw new Error(`获取文件列表失败: ${res.status}`)
+      if (!res.ok) {
+        const message = await parseServerError(res)
+        throw new Error(`获取文件列表失败: ${res.status} ${message}`)
+      }
 
       const data = await res.json()
       const files: TaskFile[] = (data.files || []).map((f: Record<string, unknown>) => ({
@@ -328,7 +350,8 @@ export const useTaskStore = defineStore('task', () => {
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const raw = err instanceof Error ? err.message : String(err)
+      const message = friendlyErrorMessage(raw)
       updateTask(taskId, { resultFetched: true, fetchError: message })
     } finally {
       updateTask(taskId, { isFetchingResult: false })
@@ -352,6 +375,10 @@ export const useTaskStore = defineStore('task', () => {
     }
   }
 
+  function resumePollingForTask(taskId: string) {
+    startPolling(taskId)
+  }
+
   return {
     tasks,
     activeTasks,
@@ -367,5 +394,6 @@ export const useTaskStore = defineStore('task', () => {
     removeTask,
     updateTask,
     resumePolling,
+    resumePollingForTask,
   }
 })

@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - 优化 `--help` 输出，补充 Agent Core 职责、首次使用流程、默认值和子命令说明。
 
+## [0.3.0] - 2026-05-14
+
+### Changed
+- 重构 main.rs，将 476 行的入口文件按职责拆分为多个聚焦模块（cmd/run, cmd/detached, cmd/stop, cmd/status, cmd/init, cmd/register）
+
 ## [0.2.1]- 2026-05-07
 
 ### Added

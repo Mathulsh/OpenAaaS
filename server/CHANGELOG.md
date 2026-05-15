@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - 优化 `--help` 输出，补充 Server 职责、常用流程、首次运行默认行为和子命令说明。
-- 修正 `--version` 输出中的命令名称为 `open-aaas-server`。
+
+## [0.5.0] - 2026-05-14
+
+### Changed
+- 重构 main.rs，将 942 行的入口文件按职责拆分为多个聚焦模块（cli, cmd/run, cmd/detached, cmd/stop, cmd/status, bg_tasks）
 
 ## [0.4.1] - 2026-05-10
 

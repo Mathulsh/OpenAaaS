@@ -5,6 +5,7 @@
 pub mod client;
 pub mod config;
 pub mod executor;
+pub mod main_support;
 pub mod scheduler;
 pub mod state;
 #[cfg(any(test, feature = "test-utils"))]

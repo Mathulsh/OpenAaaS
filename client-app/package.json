@@ -1,7 +1,7 @@
 {
   "name": "openaaas-client",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.5.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,10 +9,14 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "test": "vitest run",
+    "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.5.1",
     "@tauri-apps/plugin-http": "^2",
     "dompurify": "^3",
     "marked": "^13",
@@ -21,15 +25,21 @@
     "vue-router": "^4"
   },
   "devDependencies": {
+    "@pinia/testing": "^0.1.7",
+    "@tailwindcss/typography": "^0.5.19",
     "@tauri-apps/cli": "^2.11.1",
     "@types/dompurify": "^3",
     "@types/node": "^22",
     "@vitejs/plugin-vue": "^5",
+    "@vue/test-utils": "^2.4.10",
     "autoprefixer": "^10",
+    "jsdom": "^29.1.1",
     "postcss": "^8",
     "tailwindcss": "^3",
     "typescript": "^5",
     "vite": "^6",
+    "vitest": "^4.1.6",
+    "@vitest/ui": "^4.1.6",
     "vue-tsc": "^2"
   }
 }

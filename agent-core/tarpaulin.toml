@@ -1,0 +1,10 @@
+[default]
+# 排除难以覆盖的文件
+exclude-files = [
+    "src/main.rs",
+    "src/test_utils.rs",
+]
+# 输出格式
+out = ["Xml", "Html"]
+# 是否包含测试代码本身
+tests = false

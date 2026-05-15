@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a Question
+    url: https://github.com/Wolido/OpenAaaS/discussions
+    about: 如果你有使用问题或想讨论某个话题，请在 GitHub Discussions 中提问
+  - name: Report Security Vulnerability
+    url: mailto:security@open-aaas.com
+    about: 如果你发现了安全漏洞，请通过邮件私下报告，而不是公开提交 issue
+  - name: Documentation
+    url: https://www.open-aaas.com
+    about: 访问 OpenAaaS 官网查看文档和使用指南

@@ -5,6 +5,12 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "dialog:default",
+    "fs:default",
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$HOME/**" }, { "path": "$DOWNLOAD/**" }]
+    },
     {
       "identifier": "http:default",
       "allow": [{ "url": "https://*" }, { "url": "http://*" }]

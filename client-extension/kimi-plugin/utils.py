@@ -9,6 +9,7 @@ import os
 import sys
 import urllib.request
 import urllib.error
+import urllib.parse
 
 
 def load_config():
@@ -85,29 +86,46 @@ def save_config(config):
         return False
 
 
-def safe_request(url, headers=None, data=None, method="GET", timeout=30):
-    """
-    发送 HTTP 请求并安全处理响应
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """禁用自动重定向，让调用方手动处理 3xx"""
+    def http_error_302(self, req, fp, code, msg, headers):
+        return fp
+    http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
 
-    Args:
-        url: 请求 URL
-        headers: 请求头字典
-        data: 请求体字节数据
-        method: HTTP 方法
-        timeout: 超时时间
+_no_redirect_opener = urllib.request.build_opener(_NoRedirectHandler())
 
-    Returns:
-        (success, result_or_error, status_code)
-        - success: bool
-        - result_or_error: 解析后的 JSON/dict 或错误信息字符串
-        - status_code: HTTP 状态码或 None
+
+def safe_request(url, headers=None, data=None, method="GET", timeout=30, max_redirects=3):
     """
+    发送 HTTP 请求并安全处理响应（手动处理 3xx 重定向，保持原 HTTP 方法）
+    """
+    current_url = url
+    remaining_redirects = max_redirects
+    original_host = urllib.parse.urlparse(url).hostname
+
     try:
-        req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            body = response.read().decode("utf-8")
-            result = json.loads(body)
-            return True, result, response.getcode()
+        while remaining_redirects >= 0:
+            req_headers = dict(headers or {})
+            current_host = urllib.parse.urlparse(current_url).hostname
+            if current_host != original_host:
+                req_headers.pop("Authorization", None)
+
+            req = urllib.request.Request(current_url, data=data, headers=req_headers, method=method)
+            with _no_redirect_opener.open(req, timeout=timeout) as response:
+                status = response.getcode()
+                if 300 <= status < 400:
+                    location = response.headers.get("Location")
+                    if location:
+                        if remaining_redirects > 0:
+                            current_url = urllib.parse.urljoin(current_url, location)
+                            remaining_redirects -= 1
+                            continue
+                        return False, "请求被多次重定向，请直接使用 HTTPS URL", status
+
+                body = response.read().decode("utf-8")
+                result = json.loads(body)
+                return True, result, status
+
     except urllib.error.HTTPError as e:
         error_body = e.read().decode("utf-8")
         try:

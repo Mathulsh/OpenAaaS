@@ -7,7 +7,10 @@ import { useTaskStore, type TaskFile } from '@/stores/task'
 import Skeleton from '@/components/Skeleton.vue'
 import { useUiStore } from '@/stores/ui'
 import { useServerStore } from '@/stores/server'
+import { friendlyErrorMessage } from '@/utils/error'
 import { httpFetch } from '@/composables/useHttp'
+import { save } from '@tauri-apps/plugin-dialog'
+import { writeFile } from '@tauri-apps/plugin-fs'
 
 const route = useRoute()
 const router = useRouter()
@@ -79,7 +82,7 @@ async function handleCancel() {
     await taskStore.cancelTask(task.value.id)
     uiStore.addToast('任务已取消', 'success')
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
+    const msg = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
     uiStore.addToast(msg, 'error')
   } finally {
     uiStore.setLoading(false)
@@ -91,9 +94,23 @@ function handleResubmit() {
   router.push(`/submit/${task.value.serviceId}`)
 }
 
+async function handleResumePolling() {
+  if (!task.value) return
+  try {
+    uiStore.setLoading(true)
+    taskStore.resumePollingForTask(task.value.id)
+    uiStore.addToast('已恢复轮询', 'success')
+  } catch (err) {
+    const msg = err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err))
+    uiStore.addToast(msg, 'error')
+  } finally {
+    uiStore.setLoading(false)
+  }
+}
+
 const renderedResult = computed(() => {
   if (!task.value?.result) return ''
-  const html = marked.parse(task.value.result, { async: false }) as string
+  const html = marked.parse(task.value.result, { async: false, breaks: true }) as string
   return DOMPurify.sanitize(html)
 })
 
@@ -114,17 +131,30 @@ async function downloadFile(file: TaskFile) {
     })
     if (!res.ok) throw new Error(`下载失败: ${res.status}`)
     const blob = await res.blob()
-    const objectUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = objectUrl
-    a.download = file.filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(objectUrl), 60000)
-    uiStore.addToast('下载开始', 'success')
+
+    try {
+      const safeName = file.filename.replace(/[/\\]/g, '_')
+      const filePath = await save({ defaultPath: safeName })
+      if (!filePath) {
+        uiStore.addToast('已取消保存', 'info')
+        return
+      }
+      const arrayBuffer = await blob.arrayBuffer()
+      await writeFile(filePath, new Uint8Array(arrayBuffer))
+      uiStore.addToast(`文件已保存: ${filePath}`, 'success', 6000)
+    } catch {
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = file.filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000)
+      uiStore.addToast('文件已开始下载，请查看系统下载文件夹', 'info', 5000)
+    }
   } catch (err) {
-    uiStore.addToast(err instanceof Error ? err.message : String(err), 'error')
+    uiStore.addToast(err instanceof Error ? friendlyErrorMessage(err.message) : friendlyErrorMessage(String(err)), 'error')
   } finally {
     uiStore.setLoading(false)
   }
@@ -181,7 +211,7 @@ watch(() => route.params.id, () => {
       <!-- Result area -->
       <div v-if="task.result != null" class="mb-6">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-text-secondary mb-2">结果</h3>
-        <div class="bg-bg-primary border border-border rounded-md p-4 text-sm leading-relaxed" v-html="renderedResult" />
+        <div class="bg-bg-primary border border-border rounded-md p-4 text-sm leading-relaxed prose max-w-none" v-html="renderedResult" />
       </div>
       <div v-else-if="task.status === 'completed' && task.isFetchingResult" class="mb-6">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-text-secondary mb-2">结果</h3>
@@ -220,6 +250,13 @@ watch(() => route.params.id, () => {
         </div>
       </div>
 
+      <!-- Poll Error -->
+      <div v-if="task.pollError" class="mb-6">
+        <div class="bg-danger/5 border border-danger/20 rounded-md p-3 text-sm text-danger">
+          {{ task.pollError }}
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="flex gap-3">
         <button
@@ -228,6 +265,13 @@ watch(() => route.params.id, () => {
           @click="handleCancel"
         >
           取消任务
+        </button>
+        <button
+          v-if="canCancel && task.pollError"
+          class="px-4 py-2 bg-accent text-white rounded-md text-sm font-medium hover:bg-accent-hover transition-colors"
+          @click="handleResumePolling"
+        >
+          恢复轮询
         </button>
         <button
           v-if="isTerminal"

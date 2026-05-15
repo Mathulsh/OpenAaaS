@@ -15,6 +15,56 @@ export async function httpFetch(input: RequestInfo | URL, init?: RequestInit): P
 }
 
 /**
+ * Fetch with manual redirect handling to preserve HTTP method on 3xx redirects.
+ * Prevents POST→GET conversion on 301/302 and strips Authorization on cross-domain redirects.
+ */
+export async function httpFetchWithRedirect(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  let currentUrl: string = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+  let remainingRedirects = 3
+  const originalHost = new URL(currentUrl).host
+
+  // Deep clone init for loop mutation
+  let workingInit = init ? { ...init } : undefined
+  if (workingInit?.headers) {
+    workingInit = { ...workingInit, headers: new Headers(workingInit.headers) }
+  }
+
+  while (true) {
+    try {
+      const response = await tauriFetch(currentUrl, { ...workingInit, redirect: 'manual' })
+
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get('Location')
+        if (location) {
+          if (remainingRedirects <= 0) {
+            throw new Error('请求被多次重定向，请直接使用 HTTPS URL')
+          }
+          currentUrl = new URL(location, currentUrl).toString()
+          remainingRedirects--
+
+          // Strip Authorization on cross-domain redirect
+          if (workingInit?.headers) {
+            const currentHost = new URL(currentUrl).host
+            if (currentHost !== originalHost) {
+              ;(workingInit.headers as Headers).delete('Authorization')
+            }
+          }
+          continue
+        }
+      }
+      return response
+    } catch (err) {
+      // If it's our own "too many redirects" error, re-throw it
+      if (err instanceof Error && err.message === '请求被多次重定向，请直接使用 HTTPS URL') {
+        throw err
+      }
+      // tauriFetch doesn't support manual redirect, fall back to normal httpFetch
+      return httpFetch(input, init)
+    }
+  }
+}
+
+/**
  * Upload files using multipart/form-data constructed as Uint8Array.
  * Browser FormData with File objects cannot be serialized over Tauri IPC.
  */
@@ -55,7 +105,7 @@ export async function uploadWithFiles(
     offset += p.length
   }
 
-  return httpFetch(url, {
+  return httpFetchWithRedirect(url, {
     method: 'POST',
     headers: {
       ...(headers || {}),
@@ -63,4 +113,19 @@ export async function uploadWithFiles(
     },
     body,
   })
+}
+
+/**
+ * 解析服务端返回的结构化错误 JSON，提取可读 message。
+ * 如果 JSON 解析失败，回退到 res.statusText。
+ */
+export async function parseServerError(res: Response): Promise<string> {
+  try {
+    const body = await res.json() as { error?: string; message?: string }
+    if (body.message) return body.message
+    if (body.error) return body.error
+  } catch {
+    // JSON 解析失败，回退到 statusText
+  }
+  return res.statusText || `HTTP ${res.status}`
 }

@@ -1,0 +1,92 @@
+name: Deployment Issue
+description: 报告 OpenAaaS 部署或节点接入问题
+title: "[Deploy]: "
+labels: ["deployment", "needs-triage"]
+
+body:
+  - type: dropdown
+    id: deploy-type
+    attributes:
+      label: 部署类型
+      description: 请选择你正在部署的组件
+      options:
+        - Self-hosted Server
+        - Agent Core
+        - Both (Server + Agent Core)
+        - Client App
+        - MCP Adapter
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本号 / Commit
+      description: 请填写你正在部署的版本号或 Git commit hash
+      placeholder: 例如 v0.1.0 或 abc1234
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      description: 请选择部署目标的操作系统
+      options:
+        - macOS
+        - Ubuntu / Debian
+        - CentOS / RHEL / Fedora
+        - Windows
+        - Other Linux
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 执行步骤
+      description: 请提供你执行的完整步骤
+      render: bash
+      placeholder: |
+        git clone https://github.com/Wolido/OpenAaaS.git
+        cd server
+        cargo build --release
+        ./target/release/open-aaas-server run
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: 错误信息
+      description: 请粘贴完整的错误输出或异常信息
+      render: shell
+      placeholder: |
+        ERROR: failed to bind to address 0.0.0.0:8080
+        Caused by:
+            Address already in use (os error 48)
+    validations:
+      required: true
+
+  - type: textarea
+    id: network
+    attributes:
+      label: 网络环境（可选）
+      description: 如果你怀疑问题与网络有关，请描述你的网络环境（防火墙、代理、VPN 等）
+      placeholder: |
+        - 是否处于校园网/企业内网：是 / 否
+        - 是否需要代理上网：是 / 否
+        - 是否使用 VPN：是 / 否
+        - 防火墙是否限制出站连接：是 / 否
+        - 其他网络相关信息：...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 补充信息
+      description: 任何其他有助于排查问题的信息（配置文件、截图等）
+    validations:
+      required: false
