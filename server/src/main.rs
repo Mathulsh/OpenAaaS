@@ -29,6 +29,7 @@ struct Cli {
     /// 配置文件路径，默认使用当前目录的 config.toml
     #[arg(long, global = true, value_name = "FILE")]
     config: Option<PathBuf>,
+
     #[command(subcommand)]
     command: Commands,
 }

@@ -37,7 +37,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// 运行调度器（前台）
+    /// 前台启动 Agent 调度器
     #[command(long_about = AGENT_RUN_LONG_ABOUT)]
     #[command(after_help = AGENT_RUN_AFTER_HELP)]
     Run {
@@ -45,22 +45,22 @@ enum Commands {
         #[arg(long)]
         interactive: bool,
     },
-    /// 运行调度器（后台）
+    /// 后台启动 Agent 调度器
     #[command(name = "run-detached")]
     #[command(long_about = AGENT_DETACHED_LONG_ABOUT)]
     #[command(after_help = AGENT_DETACHED_AFTER_HELP)]
     RunDetached,
-    /// 停止后台调度器
+    /// 停止后台 Agent
     #[command(long_about = AGENT_STOP_LONG_ABOUT)]
     Stop,
-    /// 查看状态
+    /// 查看 Agent 状态
     #[command(long_about = AGENT_STATUS_LONG_ABOUT)]
     Status,
-    /// 初始化配置
+    /// 生成默认配置文件
     #[command(long_about = AGENT_INIT_LONG_ABOUT)]
     #[command(after_help = AGENT_INIT_AFTER_HELP)]
     Init,
-    /// 注册服务
+    /// 向 Server 注册 Agent
     #[command(long_about = AGENT_REGISTER_LONG_ABOUT)]
     Register {
         /// 注册令牌，例如 rt_xxx

@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - 重构 main.rs，将 476 行的入口文件按职责拆分为多个聚焦模块（cmd/run, cmd/detached, cmd/stop, cmd/status, cmd/init, cmd/register）
 
-## [0.2.1]- 2026-05-07
+## [0.2.1] - 2026-05-07
 
 ### Added
 - 二进制添加`--version`参数
