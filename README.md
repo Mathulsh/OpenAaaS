@@ -16,6 +16,10 @@
   <a href="./client-app/README.md">桌面客户端</a>
 </p>
 
+<p align="center">
+  📝 <a href="https://github.com/Wolido/OpenAaaS/discussions/57"><b>设计博客：不搬数据，蒸馏管理员</b></a>
+</p>
+
 ---
 
 **智能流动，数据静止 —— 让 AI 走到数据身边，而不是把数据交给 AI。**

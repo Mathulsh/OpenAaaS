@@ -16,6 +16,10 @@
   <a href="./client-app/README.en.md">Desktop Client</a>
 </p>
 
+<p align="center">
+  📝 <a href="https://github.com/Wolido/OpenAaaS/discussions/57"><b>Design Blog: Don't Move Data, Distill an Administrator.Skill</b></a>
+</p>
+
 ---
 
 **Intelligence flows, data stays still — bring AI to the data, instead of handing data over to AI.**
