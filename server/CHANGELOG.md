@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-05-16
+
+### Changed
+- 优化 `--help` 输出，补充 Server 职责、常用流程、首次运行默认行为和子命令说明。
+
 ## [0.5.0] - 2026-05-14
 
 ### Changed
@@ -52,3 +57,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release
+
+[0.5.1]: https://github.com/Wolido/OpenAaaS/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/Wolido/OpenAaaS/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/Wolido/OpenAaaS/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/Wolido/OpenAaaS/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/Wolido/OpenAaaS/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/Wolido/OpenAaaS/compare/v0.2.1...v0.3.0
+[0.2.1]: https://github.com/Wolido/OpenAaaS/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/Wolido/OpenAaaS/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/Wolido/OpenAaaS/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/Wolido/OpenAaaS/releases/tag/v0.1.0
